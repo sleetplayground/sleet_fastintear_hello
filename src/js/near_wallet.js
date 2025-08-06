@@ -1,91 +1,43 @@
-import { setupWalletSelector } from "@near-wallet-selector/core";
-import { setupModal } from "@near-wallet-selector/modal-ui";
-import { setupIntearWallet } from "@near-wallet-selector/intear-wallet";
-import { getCurrentNetworkId } from './config';
-import "@near-wallet-selector/modal-ui/styles.css"
+import { getCurrentNetworkId, getNearRpc } from './config';
 
-let selector;
-let modal;
 let accountId;
-const METEOR_WALLET_ID = "intear-wallet";
 
-// Initialize wallet selector
-async function initWalletSelector() {
+// Initialize FastINTEAR
+async function initFastIntear() {
   try {
-    console.log('Initializing wallet selector...');
+    console.log('Initializing FastINTEAR...');
     const networkId = getCurrentNetworkId();
+    const rpcUrl = getNearRpc();
+    
     console.log('Current network ID:', networkId);
+    console.log('RPC URL:', rpcUrl);
+    
     if (!networkId) {
       throw new Error('Network ID not found');
     }
 
-    selector = await setupWalletSelector({
-      network: networkId,
-      modules: [setupIntearWallet()],
-      defaultWalletId: METEOR_WALLET_ID,
-      autoConnect: true
+    // Configure FastINTEAR
+    near.config({ 
+      networkId: networkId,
+      nodeUrl: rpcUrl
     });
-    console.log('Wallet selector setup complete');
+    
+    console.log('FastINTEAR setup complete');
 
-    modal = setupModal(selector, {
-      onComplete: async () => {
-        try {
-          console.log('Modal complete callback triggered');
-          const wallet = await selector.wallet();
-          const accounts = await wallet.getAccounts();
-          accountId = accounts[0]?.accountId;
-          console.log('Account ID after login:', accountId);
-          if (accountId) {
-            console.log('Updating UI after successful login');
-            updateLoginButton();
-            updateNetworkToggleState();
-            modal.hide();
-          }
-        } catch (err) {
-          console.error('Error during wallet connection:', err);
-          updateLoginButton();
-        }
-      },
-      onHide: () => {
-        console.log('Modal hidden');
-        updateLoginButton();
-      }
-    });
-
-    // Get existing accountId if already signed in
-    const wallet = await selector.wallet(METEOR_WALLET_ID);
-    accountId = (await wallet.getAccounts())[0]?.accountId;
-    console.log('Initial account ID:', accountId);
-    updateLoginButton();
-
-    // Subscribe to changes
-    selector.on("accountsChanged", (e) => {
-      console.log('Accounts changed event:', e);
-      accountId = e.accounts[0]?.accountId;
-      updateLoginButton();
-      updateNetworkToggleState();
-    });
-
-    selector.on("signedIn", async () => {
-      console.log('Signed in event triggered');
-      const wallet = await selector.wallet();
-      const accounts = await wallet.getAccounts();
-      accountId = accounts[0]?.accountId;
-      console.log('Account ID after sign in:', accountId);
-      updateLoginButton();
-      updateNetworkToggleState();
-    });
-    selector.on("signedOut", () => {
-      console.log('Signed out event triggered');
+    // Check if already signed in
+    const status = near.authStatus();
+    if (status === 'SignedIn') {
+      accountId = near.accountId();
+      console.log('Already signed in with account:', accountId);
+    } else {
       accountId = null;
-      updateLoginButton();
-      updateNetworkToggleState();
-    });
-
-    // Disable network toggle when logged in
+      console.log('Not signed in');
+    }
+    
+    updateLoginButton();
     updateNetworkToggleState();
   } catch (err) {
-    console.error('Failed to initialize wallet selector:', err);
+    console.error('Failed to initialize FastINTEAR:', err);
     updateLoginButton();
   }
 }
@@ -115,20 +67,34 @@ async function handleWalletConnection() {
   console.log('Handle wallet connection clicked. Current account ID:', accountId);
   if (accountId) {
     console.log('Signing out...');
-    const wallet = await selector.wallet();
-    await wallet.signOut();
+    await near.signOut();
     accountId = null;
     updateNetworkToggleState();
     updateLoginButton();
   } else {
-    console.log('Opening login modal...');
-    modal.show();
+    try {
+      console.log('Requesting sign in...');
+      await near.requestSignIn({
+        contractId: getCurrentNetworkId() === 'mainnet' ? 'hello.sleet.near' : 'hello.sleet.testnet'
+      });
+      
+      // Check auth status after sign in attempt
+      const status = near.authStatus();
+      if (status === 'SignedIn') {
+        accountId = near.accountId();
+        console.log('Successfully signed in with account:', accountId);
+        updateLoginButton();
+        updateNetworkToggleState();
+      }
+    } catch (error) {
+      console.error('Error during sign in:', error);
+    }
   }
 }
 
-// Initialize wallet selector when the page loads
+// Initialize FastINTEAR when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-  initWalletSelector();
+  initFastIntear();
 
   // Add click handler to login button
   const loginButton = document.getElementById('near_login_button');
@@ -139,10 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for network changes
   document.addEventListener('networkChanged', async () => {
     console.log('Network changed, signing out if needed...');
-    if (selector && accountId) {
+    if (accountId) {
       try {
-        const wallet = await selector.wallet();
-        await wallet.signOut();
+        await near.signOut();
+        accountId = null;
       } catch (err) {
         console.error('Error during sign out:', err);
       }
@@ -151,5 +117,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Export wallet selector instance for other modules
-export { selector, accountId };
+// Export account ID for other modules
+export { accountId };

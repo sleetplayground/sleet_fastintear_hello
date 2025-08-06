@@ -1,5 +1,5 @@
-import { selector } from './near_wallet.js';
-import { getCurrentNetworkId, getHelloContract } from './config';
+import { accountId } from './near_wallet.js';
+import { getCurrentNetworkId, getHelloContract, getNearRpc } from './config';
 
 // Get contract name from config
 const getContractName = () => {
@@ -9,31 +9,38 @@ const getContractName = () => {
 // Function to update greeting message
 async function updateGreeting(message) {
     try {
-        if (!selector) {
-            throw new Error('Wallet not initialized');
-        }
-
-        const wallet = await selector.wallet();
-        if (!wallet) {
+        // Check if user is signed in
+        const status = near.authStatus();
+        if (status !== 'SignedIn') {
             throw new Error('Please connect your wallet first');
         }
+
+        const networkId = getCurrentNetworkId();
+        const rpcUrl = getNearRpc();
+        
+        // Configure FastINTEAR
+        near.config({ 
+            networkId: networkId,
+            nodeUrl: rpcUrl
+        });
 
         // Get the contract name based on current network
         const contractName = getContractName();
 
-        // Call the add_message method on the smart contract
-        const result = await wallet.signAndSendTransaction({
-            signerId: wallet.accountId,
+        console.log('Updating greeting to:', message);
+        console.log('Contract:', contractName);
+
+        // Call the set_greeting method on the smart contract
+        const result = await near.sendTx({
             receiverId: contractName,
-            actions: [{
-                type: 'FunctionCall',
-                params: {
+            actions: [
+                near.actions.functionCall({
                     methodName: 'set_greeting',
                     args: { greeting: message },
                     gas: '30000000000000', // 30 TGas
-                    deposit: '0',  // No deposit needed for this call
-                }
-            }]
+                    deposit: '0'  // No deposit needed for this call
+                })
+            ]
         });
 
         console.log('Transaction successful:', result);

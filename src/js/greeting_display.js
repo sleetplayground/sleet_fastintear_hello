@@ -1,34 +1,34 @@
-import { getHelloContract, getNearRpc } from "./config.js";
+import { getHelloContract, getCurrentNetworkId, getNearRpc } from "./config.js";
 
 // Function to fetch the greeting from the contract
 async function getGreeting() {
-    const NearRpc = getNearRpc();
-    const HelloContract = getHelloContract();
+    try {
+        const HelloContract = getHelloContract();
+        const networkId = getCurrentNetworkId();
+        const rpcUrl = getNearRpc();
+        
+        // Configure FastINTEAR if not already configured
+        near.config({ 
+            networkId: networkId,
+            nodeUrl: rpcUrl
+        });
 
-    const response = await fetch(NearRpc, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: "dontcare",
-            method: "query",
-            params: {
-                request_type: "call_function",
-                account_id: HelloContract,
-                method_name: "get_greeting",
-                args_base64: "",
-                finality: "final"
-            }
-        })
-    });
+        console.log("Fetching greeting from contract:", HelloContract);
 
-    const data = await response.json();
-    console.log("Full response:", data); // Debugging
+        // Use FastINTEAR's view method
+        const result = await near.view({
+            contractId: HelloContract,
+            methodName: "get_greeting",
+            args: {}
+        });
 
-    if (data.result && data.result.result) {
-        const greeting = new TextDecoder().decode(new Uint8Array(data.result.result));
+        console.log("Greeting result:", result);
+        
+        // The result should be a string directly
+        const greeting = typeof result === 'string' ? result : JSON.stringify(result);
         document.getElementById("current_greeting").textContent = greeting;
-    } else {
+    } catch (error) {
+        console.error("Error fetching greeting:", error);
         document.getElementById("current_greeting").textContent = "Error fetching greeting";
     }
 }
