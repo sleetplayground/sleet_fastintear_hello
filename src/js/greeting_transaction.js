@@ -1,5 +1,5 @@
 import { accountId } from './near_wallet.js';
-import { getCurrentNetworkId, getHelloContract, getNearRpc } from './config';
+import { getCurrentNetworkId, getHelloContract, getNearRpc } from './config.js';
 
 // Get contract name from config
 const getContractName = () => {

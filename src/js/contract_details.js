@@ -1,4 +1,4 @@
-import { getCurrentNetworkId, getHelloContract, getNearBlocksUrl } from './config';
+import { getCurrentNetworkId, getHelloContract, getNearBlocksUrl } from './config.js';
 
 function getNearBlocksPath(path) {
     const baseUrl = getNearBlocksUrl();

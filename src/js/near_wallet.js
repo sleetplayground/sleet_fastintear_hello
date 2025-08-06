@@ -1,4 +1,4 @@
-import { getCurrentNetworkId, getNearRpc } from './config';
+import { getCurrentNetworkId, getNearRpc } from './config.js';
 
 let accountId;
 

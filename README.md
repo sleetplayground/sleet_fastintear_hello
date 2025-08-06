@@ -8,6 +8,9 @@ bun install
 # bun run start
 # bun run build
 bun run clean
+
+# live server
+bun run dev
 ```
 
 

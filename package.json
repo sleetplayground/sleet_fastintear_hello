@@ -5,10 +5,10 @@
   "source": "src/index.html",
   "scripts": {
     "start": "parcel",
-    "dev": "live-server src --port=3000 --open=/index.html",
+    "dev": "live-server src --port=3000 --open=/index.html --wait=200",
     "build": "npm run clean && parcel build",
     "clean": "rm -rf dist && rm -rf .parcel-cache"
-  },
+    },
   "dependencies": {
     "fastintear": "^0.1.18"
   },
