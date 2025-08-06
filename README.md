@@ -2,10 +2,11 @@
 🌐 a fast hello near dapp that uses, fastnear js and intear wallet
 
 ### DEV
+for some reason parcel cannot build???
 ```sh
 bun install
-bun run start
-bun run build
+# bun run start
+# bun run build
 bun run clean
 ```
 
@@ -13,8 +14,8 @@ bun run clean
 
 ### What can you do
 / todo
-- [ ] get the greeting form the contract
-- [ ] update the greeting
+- [x] get the greeting form the contract
+- [x] update the greeting
 
 ---
 
