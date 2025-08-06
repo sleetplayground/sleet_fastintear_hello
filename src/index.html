@@ -1,13 +1,90 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parcel Vanilla App</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <h1>Parcel Vanilla App</h1>
-    <p>Edit <code>src/index.html</code> to get started!</p>
-  </body>
+
+<head>
+  <!-- ❄️ -->
+  <!-- hello.sleet.near -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hello.sleet</title>
+  <link rel="icon" type="image/svg+xml" href="./img/sleet_icon.svg">
+
+  <!-- SEO and Meta Tags -->
+  <meta name="description"
+    content="Welcome to hello.sleet, your gateway to the NEAR blockchain. Discover and interact with smart contracts seamlessly.">
+  <meta name="keywords" content="NEAR, blockchain, smart contracts, hello.sleet, decentralized, web3">
+  <meta name="author" content="Your Name or Company">
+  <meta property="og:title" content="hello.sleet - NEAR Blockchain Interaction">
+  <meta property="og:description"
+    content="Explore and interact with NEAR blockchain smart contracts using hello.sleet.">
+  <meta property="og:image" content="./img/sleet_icon.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="hello.sleet - NEAR Blockchain Interaction">
+  <meta name="twitter:description"
+    content="Explore and interact with NEAR blockchain smart contracts using hello.sleet.">
+  <meta name="twitter:image" content="./img/sleet_icon.svg">
+  <!-- dynamic  -->
+  <meta property="og:url" content="">
+
+  <!-- style imports -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Offside&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+    @import url('./css/style.css');
+  </style>
+
+</head>
+
+<body>
+
+
+  <!-- Main Ui will be in  article -->
+  <article>
+    <!-- header -->
+    <header>
+    <h1 id="header">hello.sleet.near</h1>
+  </header>
+
+    <!-- greeting_display -->
+    <section id="greeting_display">
+      <h3 id="current_greeting"></h3>
+      <br/>
+      <button id="get_current_greeting">GET GREETING</button>
+    </section>
+
+    <!-- greeting_update -->
+    <section id="greeting_update">
+      <input type="text" id="new_greeting_input" placeholder="Enter new greeting">
+      <br/>
+      <button id="update_greeting_button">Update Greeting</button>
+    </section>
+
+    <section id="greeting_contract_details">
+    </section>
+
+    <!-- footer -->
+     <footer>
+     <p id="footer">copyright: 2025 by sleet.near</p>
+     </footer>
+
+  </article>
+
+  <!-- Additional ui -->
+  <button id="network_toggle_button">HELLO</button>
+  <button id="near_login_button">LOGIN</button>
+
+
+  <!-- Import polyfills -->
+  <script type="module" src="./js/polyfills.js"></script>
+  <!-- scipts -->
+  <script type="module" src="./js/og_ulr.js"></script>
+  <script type="module" src="./js/network_toggle_button.js"></script>
+  <script type="module" src="./js/network_header_toggle.js"></script>
+  <script type="module" src="./js/near_wallet.js"></script>
+  <script type="module" src="./js/greeting_display.js"></script>
+  <script type="module" src="./js/greeting_transaction.js"></script>
+  <script type="module" src="./js/contract_details.js"></script>
+
+
+</body>
+
 </html>
