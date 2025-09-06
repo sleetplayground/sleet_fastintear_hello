@@ -119,6 +119,7 @@ const account = await near.queryAccount({
 ### Action Helpers
 ```typescript
 // Function call action
+// Arguments can be passed as an object (`args`) or as a base64-encoded JSON string (`argsBase64`).
 near.actions.functionCall({
   methodName: "transfer",
   args: { receiver_id: "alice.near", amount: "1000" },
@@ -136,15 +137,81 @@ near.actions.stake({
 });
 
 // Key management actions
-near.actions.addFullAccessKey({ publicKey: "ed25519:..." });
-near.actions.deleteKey({ publicKey: "ed25519:..." });
+
+// To add a key, you need to send a transaction to your own account
+// with an `AddKey` action.
+
+// You'll need a new key pair first. The `@fastnear/utils` package,
+// which is exposed as `near.utils`, provides functions for this.
+// For example:
+// const newPrivateKey = near.utils.privateKeyFromRandom();
+// const newPublicKey = near.utils.publicKeyFromPrivate(newPrivateKey);
+
+// Add a full access key
+// This gives the new key full control over the account.
+await near.sendTx({
+  receiverId: near.accountId(),
+  actions: [
+    near.actions.addFullAccessKey({
+      publicKey: "ed25519:...", // The new public key
+    }),
+  ],
+});
+
+// Add a limited access (function call) key
+// This key can only call specific methods on a specific contract.
+await near.sendTx({
+  receiverId: near.accountId(),
+  actions: [
+    near.actions.addLimitedAccessKey({
+      publicKey: "ed25519:...", // The new public key
+      allowance: "1000000000000000000000000", // in yoctoNEAR
+      accountId: "contract.near", // The contract the key is allowed to call
+      methodNames: ["method_one", "method_two"], // Optional: specific methods
+    }),
+  ],
+});
+
+// Delete a key
+// This revokes the key's access.
+await near.sendTx({
+  receiverId: near.accountId(),
+  actions: [
+    near.actions.deleteKey({
+      publicKey: "ed25519:...", // The public key to delete
+    }),
+  ],
+});
 
 // Account management
 near.actions.createAccount();
 near.actions.deleteAccount({ beneficiaryId: "beneficiary.near" });
 
 // Contract deployment
-near.actions.deployContract({ codeBase64: "base64-encoded-wasm" });
+// The `deployContract` action requires the contract code as a byte array.
+
+// Example of getting contract bytes in a browser from a WASM file:
+// const response = await fetch('path/to/your.wasm');
+// const wasmBytes = new Uint8Array(await response.arrayBuffer());
+
+// Example of getting contract bytes from a comma-separated string (e.g., from a textarea):
+// const codeString = "0,97,115,109,...";
+// const codeBytes = new Uint8Array(codeString.split(',').map(s => parseInt(s.trim())));
+
+// To deploy a contract, you send a transaction with a `DeployContract` action.
+// The contract code should be passed as an array of numbers derived from a Uint8Array
+// to ensure correct serialization.
+near.sendTx({
+  receiverId: "your-account.near", // The account to deploy the contract to
+  actions: [
+    {
+      type: "DeployContract",
+      params: {
+        code: Array.from(wasmBytes) // or Array.from(codeBytes)
+      }
+    }
+  ]
+});
 ```
 
 ## INTEAR Wallet Integration
@@ -313,3 +380,8 @@ function App() {
 - INTEAR Wallet: https://github.com/INTEARnear/wallet
 
 This project represents a significant step toward making NEAR Protocol development more accessible through browser-first design and simplified APIs while maintaining security and functionality.
+
+
+---
+
+copyright 2025 by sleet.near
