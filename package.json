@@ -8,12 +8,12 @@
     "dev": "live-server src --port=3000 --open=/index.html --wait=200",
     "build": "npm run clean && parcel build",
     "clean": "rm -rf dist && rm -rf .parcel-cache"
-    },
+  },
   "dependencies": {
-    "fastintear": "^0.1.18"
+    "fastintear": "^0.2.4"
   },
   "devDependencies": {
     "live-server": "^1.2.2",
-    "parcel": "^2.14.0"
+    "parcel": "^2.15.4"
   }
 }
