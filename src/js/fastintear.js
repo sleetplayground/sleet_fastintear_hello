@@ -1,5 +1,5 @@
-/* ⋈ 🏃🏻💨 FastNEAR API - IIFE/UMD (fastintear version 0.1.18) */
-/* https://www.npmjs.com/package/fastintear/v/0.1.18 */
+/* ⋈ 🏃🏻💨 FastNEAR API - IIFE/UMD (fastintear version 0.2.4) */
+/* https://www.npmjs.com/package/fastintear/v/0.2.4 */
 "use strict";
 var near = (() => {
   var __defProp = Object.defineProperty;
@@ -30,6 +30,7 @@ var near = (() => {
     afterTxSent: () => afterTxSent,
     authStatus: () => authStatus,
     config: () => config,
+    createNearClient: () => createNearClient,
     event: () => event,
     exp: () => exp2,
     generateTxId: () => generateTxId,
@@ -141,6 +142,55 @@ var near = (() => {
     return word << 32 - shift | word >>> shift;
   }
   __name(rotr, "rotr");
+  var hasHexBuiltin = /* @__PURE__ */ (() => (
+    // @ts-ignore
+    typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
+  ))();
+  var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
+  function bytesToHex(bytes) {
+    abytes(bytes);
+    if (hasHexBuiltin)
+      return bytes.toHex();
+    let hex = "";
+    for (let i = 0; i < bytes.length; i++) {
+      hex += hexes[bytes[i]];
+    }
+    return hex;
+  }
+  __name(bytesToHex, "bytesToHex");
+  var asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
+  function asciiToBase16(ch) {
+    if (ch >= asciis._0 && ch <= asciis._9)
+      return ch - asciis._0;
+    if (ch >= asciis.A && ch <= asciis.F)
+      return ch - (asciis.A - 10);
+    if (ch >= asciis.a && ch <= asciis.f)
+      return ch - (asciis.a - 10);
+    return;
+  }
+  __name(asciiToBase16, "asciiToBase16");
+  function hexToBytes(hex) {
+    if (typeof hex !== "string")
+      throw new Error("hex string expected, got " + typeof hex);
+    if (hasHexBuiltin)
+      return Uint8Array.fromHex(hex);
+    const hl = hex.length;
+    const al = hl / 2;
+    if (hl % 2)
+      throw new Error("hex string expected, got unpadded hex of length " + hl);
+    const array = new Uint8Array(al);
+    for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
+      const n1 = asciiToBase16(hex.charCodeAt(hi));
+      const n2 = asciiToBase16(hex.charCodeAt(hi + 1));
+      if (n1 === void 0 || n2 === void 0) {
+        const char = hex[hi] + hex[hi + 1];
+        throw new Error('hex string expected, got non-hex character "' + char + '" at index ' + hi);
+      }
+      array[ai] = n1 * 16 + n2;
+    }
+    return array;
+  }
+  __name(hexToBytes, "hexToBytes");
   function utf8ToBytes(str) {
     if (typeof str !== "string")
       throw new Error("string expected");
@@ -154,6 +204,22 @@ var near = (() => {
     return data;
   }
   __name(toBytes, "toBytes");
+  function concatBytes(...arrays) {
+    let sum = 0;
+    for (let i = 0; i < arrays.length; i++) {
+      const a = arrays[i];
+      abytes(a);
+      sum += a.length;
+    }
+    const res = new Uint8Array(sum);
+    for (let i = 0, pad = 0; i < arrays.length; i++) {
+      const a = arrays[i];
+      res.set(a, pad);
+      pad += a.length;
+    }
+    return res;
+  }
+  __name(concatBytes, "concatBytes");
   var Hash = class {
     static {
       __name(this, "Hash");
@@ -705,84 +771,42 @@ var near = (() => {
   var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
   var sha512 = /* @__PURE__ */ createHasher(() => new SHA512());
 
-  // ../../node_modules/@noble/curves/esm/abstract/utils.js
+  // ../../node_modules/@noble/curves/esm/utils.js
   var _0n = /* @__PURE__ */ BigInt(0);
   var _1n = /* @__PURE__ */ BigInt(1);
-  function isBytes2(a) {
-    return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
+  function _abool2(value, title = "") {
+    if (typeof value !== "boolean") {
+      const prefix = title && `"${title}"`;
+      throw new Error(prefix + "expected boolean, got type=" + typeof value);
+    }
+    return value;
   }
-  __name(isBytes2, "isBytes");
-  function abytes2(item) {
-    if (!isBytes2(item))
-      throw new Error("Uint8Array expected");
+  __name(_abool2, "_abool2");
+  function _abytes2(value, length, title = "") {
+    const bytes = isBytes(value);
+    const len = value?.length;
+    const needsLen = length !== void 0;
+    if (!bytes || needsLen && len !== length) {
+      const prefix = title && `"${title}" `;
+      const ofLen = needsLen ? ` of length ${length}` : "";
+      const got = bytes ? `length=${len}` : `type=${typeof value}`;
+      throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
+    }
+    return value;
   }
-  __name(abytes2, "abytes");
-  function abool(title, value) {
-    if (typeof value !== "boolean")
-      throw new Error(title + " boolean expected, got " + value);
-  }
-  __name(abool, "abool");
+  __name(_abytes2, "_abytes2");
   function hexToNumber(hex) {
     if (typeof hex !== "string")
       throw new Error("hex string expected, got " + typeof hex);
     return hex === "" ? _0n : BigInt("0x" + hex);
   }
   __name(hexToNumber, "hexToNumber");
-  var hasHexBuiltin = (
-    // @ts-ignore
-    typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
-  );
-  var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
-  function bytesToHex(bytes) {
-    abytes2(bytes);
-    if (hasHexBuiltin)
-      return bytes.toHex();
-    let hex = "";
-    for (let i = 0; i < bytes.length; i++) {
-      hex += hexes[bytes[i]];
-    }
-    return hex;
-  }
-  __name(bytesToHex, "bytesToHex");
-  var asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
-  function asciiToBase16(ch) {
-    if (ch >= asciis._0 && ch <= asciis._9)
-      return ch - asciis._0;
-    if (ch >= asciis.A && ch <= asciis.F)
-      return ch - (asciis.A - 10);
-    if (ch >= asciis.a && ch <= asciis.f)
-      return ch - (asciis.a - 10);
-    return;
-  }
-  __name(asciiToBase16, "asciiToBase16");
-  function hexToBytes(hex) {
-    if (typeof hex !== "string")
-      throw new Error("hex string expected, got " + typeof hex);
-    if (hasHexBuiltin)
-      return Uint8Array.fromHex(hex);
-    const hl = hex.length;
-    const al = hl / 2;
-    if (hl % 2)
-      throw new Error("hex string expected, got unpadded hex of length " + hl);
-    const array = new Uint8Array(al);
-    for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
-      const n1 = asciiToBase16(hex.charCodeAt(hi));
-      const n2 = asciiToBase16(hex.charCodeAt(hi + 1));
-      if (n1 === void 0 || n2 === void 0) {
-        const char = hex[hi] + hex[hi + 1];
-        throw new Error('hex string expected, got non-hex character "' + char + '" at index ' + hi);
-      }
-      array[ai] = n1 * 16 + n2;
-    }
-    return array;
-  }
-  __name(hexToBytes, "hexToBytes");
   function bytesToNumberBE(bytes) {
     return hexToNumber(bytesToHex(bytes));
   }
   __name(bytesToNumberBE, "bytesToNumberBE");
   function bytesToNumberLE(bytes) {
-    abytes2(bytes);
+    abytes(bytes);
     return hexToNumber(bytesToHex(Uint8Array.from(bytes).reverse()));
   }
   __name(bytesToNumberLE, "bytesToNumberLE");
@@ -802,7 +826,7 @@ var near = (() => {
       } catch (e) {
         throw new Error(title + " must be hex string or Uint8Array, cause: " + e);
       }
-    } else if (isBytes2(hex)) {
+    } else if (isBytes(hex)) {
       res = Uint8Array.from(hex);
     } else {
       throw new Error(title + " must be hex string or Uint8Array");
@@ -813,22 +837,19 @@ var near = (() => {
     return res;
   }
   __name(ensureBytes, "ensureBytes");
-  function concatBytes(...arrays) {
-    let sum = 0;
-    for (let i = 0; i < arrays.length; i++) {
-      const a = arrays[i];
-      abytes2(a);
-      sum += a.length;
-    }
-    const res = new Uint8Array(sum);
-    for (let i = 0, pad = 0; i < arrays.length; i++) {
-      const a = arrays[i];
-      res.set(a, pad);
-      pad += a.length;
-    }
-    return res;
+  function equalBytes(a, b) {
+    if (a.length !== b.length)
+      return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++)
+      diff |= a[i] ^ b[i];
+    return diff === 0;
   }
-  __name(concatBytes, "concatBytes");
+  __name(equalBytes, "equalBytes");
+  function copyBytes(bytes) {
+    return Uint8Array.from(bytes);
+  }
+  __name(copyBytes, "copyBytes");
   var isPosBig = /* @__PURE__ */ __name((n) => typeof n === "bigint" && _0n <= n, "isPosBig");
   function inRange(n, min, max) {
     return isPosBig(n) && isPosBig(min) && isPosBig(max) && min <= n && n < max;
@@ -847,36 +868,25 @@ var near = (() => {
   }
   __name(bitLen, "bitLen");
   var bitMask = /* @__PURE__ */ __name((n) => (_1n << BigInt(n)) - _1n, "bitMask");
-  var validatorFns = {
-    bigint: /* @__PURE__ */ __name((val) => typeof val === "bigint", "bigint"),
-    function: /* @__PURE__ */ __name((val) => typeof val === "function", "function"),
-    boolean: /* @__PURE__ */ __name((val) => typeof val === "boolean", "boolean"),
-    string: /* @__PURE__ */ __name((val) => typeof val === "string", "string"),
-    stringOrUint8Array: /* @__PURE__ */ __name((val) => typeof val === "string" || isBytes2(val), "stringOrUint8Array"),
-    isSafeInteger: /* @__PURE__ */ __name((val) => Number.isSafeInteger(val), "isSafeInteger"),
-    array: /* @__PURE__ */ __name((val) => Array.isArray(val), "array"),
-    field: /* @__PURE__ */ __name((val, object) => object.Fp.isValid(val), "field"),
-    hash: /* @__PURE__ */ __name((val) => typeof val === "function" && Number.isSafeInteger(val.outputLen), "hash")
-  };
-  function validateObject(object, validators, optValidators = {}) {
-    const checkField = /* @__PURE__ */ __name((fieldName, type, isOptional) => {
-      const checkVal = validatorFns[type];
-      if (typeof checkVal !== "function")
-        throw new Error("invalid validator function");
+  function _validateObject(object, fields, optFields = {}) {
+    if (!object || typeof object !== "object")
+      throw new Error("expected valid options object");
+    function checkField(fieldName, expectedType, isOpt) {
       const val = object[fieldName];
-      if (isOptional && val === void 0)
+      if (isOpt && val === void 0)
         return;
-      if (!checkVal(val, object)) {
-        throw new Error("param " + String(fieldName) + " is invalid. Expected " + type + ", got " + val);
-      }
-    }, "checkField");
-    for (const [fieldName, type] of Object.entries(validators))
-      checkField(fieldName, type, false);
-    for (const [fieldName, type] of Object.entries(optValidators))
-      checkField(fieldName, type, true);
-    return object;
+      const current = typeof val;
+      if (current !== expectedType || val === null)
+        throw new Error(`param "${fieldName}" is invalid: expected ${expectedType}, got ${current}`);
+    }
+    __name(checkField, "checkField");
+    Object.entries(fields).forEach(([k, v]) => checkField(k, v, false));
+    Object.entries(optFields).forEach(([k, v]) => checkField(k, v, true));
   }
-  __name(validateObject, "validateObject");
+  __name(_validateObject, "_validateObject");
+  var notImplemented = /* @__PURE__ */ __name(() => {
+    throw new Error("not implemented");
+  }, "notImplemented");
   function memoized(fn) {
     const map = /* @__PURE__ */ new WeakMap();
     return (arg, ...args) => {
@@ -897,7 +907,10 @@ var near = (() => {
   var _3n = /* @__PURE__ */ BigInt(3);
   var _4n = /* @__PURE__ */ BigInt(4);
   var _5n = /* @__PURE__ */ BigInt(5);
+  var _7n = /* @__PURE__ */ BigInt(7);
   var _8n = /* @__PURE__ */ BigInt(8);
+  var _9n = /* @__PURE__ */ BigInt(9);
+  var _16n = /* @__PURE__ */ BigInt(16);
   function mod(a, b) {
     const result = a % b;
     return result >= _0n2 ? result : b + result;
@@ -933,11 +946,15 @@ var near = (() => {
     return mod(x, modulo);
   }
   __name(invert, "invert");
+  function assertIsSquare(Fp2, root, n) {
+    if (!Fp2.eql(Fp2.sqr(root), n))
+      throw new Error("Cannot find square root");
+  }
+  __name(assertIsSquare, "assertIsSquare");
   function sqrt3mod4(Fp2, n) {
     const p1div4 = (Fp2.ORDER + _1n2) / _4n;
     const root = Fp2.pow(n, p1div4);
-    if (!Fp2.eql(Fp2.sqr(root), n))
-      throw new Error("Cannot find square root");
+    assertIsSquare(Fp2, root, n);
     return root;
   }
   __name(sqrt3mod4, "sqrt3mod4");
@@ -948,13 +965,35 @@ var near = (() => {
     const nv = Fp2.mul(n, v);
     const i = Fp2.mul(Fp2.mul(nv, _2n), v);
     const root = Fp2.mul(nv, Fp2.sub(i, Fp2.ONE));
-    if (!Fp2.eql(Fp2.sqr(root), n))
-      throw new Error("Cannot find square root");
+    assertIsSquare(Fp2, root, n);
     return root;
   }
   __name(sqrt5mod8, "sqrt5mod8");
+  function sqrt9mod16(P2) {
+    const Fp_ = Field(P2);
+    const tn = tonelliShanks(P2);
+    const c1 = tn(Fp_, Fp_.neg(Fp_.ONE));
+    const c2 = tn(Fp_, c1);
+    const c3 = tn(Fp_, Fp_.neg(c1));
+    const c4 = (P2 + _7n) / _16n;
+    return (Fp2, n) => {
+      let tv1 = Fp2.pow(n, c4);
+      let tv2 = Fp2.mul(tv1, c1);
+      const tv3 = Fp2.mul(tv1, c2);
+      const tv4 = Fp2.mul(tv1, c3);
+      const e1 = Fp2.eql(Fp2.sqr(tv2), n);
+      const e2 = Fp2.eql(Fp2.sqr(tv3), n);
+      tv1 = Fp2.cmov(tv1, tv2, e1);
+      tv2 = Fp2.cmov(tv4, tv3, e2);
+      const e3 = Fp2.eql(Fp2.sqr(tv2), n);
+      const root = Fp2.cmov(tv1, tv2, e3);
+      assertIsSquare(Fp2, root, n);
+      return root;
+    };
+  }
+  __name(sqrt9mod16, "sqrt9mod16");
   function tonelliShanks(P2) {
-    if (P2 < BigInt(3))
+    if (P2 < _3n)
       throw new Error("sqrt is not defined for small field");
     let Q = P2 - _1n2;
     let S = 0;
@@ -1008,6 +1047,8 @@ var near = (() => {
       return sqrt3mod4;
     if (P2 % _8n === _5n)
       return sqrt5mod8;
+    if (P2 % _16n === _9n)
+      return sqrt9mod16(P2);
     return tonelliShanks(P2);
   }
   __name(FpSqrt, "FpSqrt");
@@ -1035,14 +1076,15 @@ var near = (() => {
     const initial = {
       ORDER: "bigint",
       MASK: "bigint",
-      BYTES: "isSafeInteger",
-      BITS: "isSafeInteger"
+      BYTES: "number",
+      BITS: "number"
     };
     const opts = FIELD_FIELDS.reduce((map, val) => {
       map[val] = "function";
       return map;
     }, initial);
-    return validateObject(field, opts);
+    _validateObject(field, opts);
+    return field;
   }
   __name(validateField, "validateField");
   function FpPow(Fp2, num, power) {
@@ -1100,10 +1142,33 @@ var near = (() => {
     return { nBitLength: _nBitLength, nByteLength };
   }
   __name(nLength, "nLength");
-  function Field(ORDER, bitLen2, isLE = false, redef = {}) {
+  function Field(ORDER, bitLenOrOpts, isLE = false, opts = {}) {
     if (ORDER <= _0n2)
       throw new Error("invalid field: expected ORDER > 0, got " + ORDER);
-    const { nBitLength: BITS, nByteLength: BYTES } = nLength(ORDER, bitLen2);
+    let _nbitLength = void 0;
+    let _sqrt = void 0;
+    let modFromBytes = false;
+    let allowedLengths = void 0;
+    if (typeof bitLenOrOpts === "object" && bitLenOrOpts != null) {
+      if (opts.sqrt || isLE)
+        throw new Error("cannot specify opts in two arguments");
+      const _opts = bitLenOrOpts;
+      if (_opts.BITS)
+        _nbitLength = _opts.BITS;
+      if (_opts.sqrt)
+        _sqrt = _opts.sqrt;
+      if (typeof _opts.isLE === "boolean")
+        isLE = _opts.isLE;
+      if (typeof _opts.modFromBytes === "boolean")
+        modFromBytes = _opts.modFromBytes;
+      allowedLengths = _opts.allowedLengths;
+    } else {
+      if (typeof bitLenOrOpts === "number")
+        _nbitLength = bitLenOrOpts;
+      if (opts.sqrt)
+        _sqrt = opts.sqrt;
+    }
+    const { nBitLength: BITS, nByteLength: BYTES } = nLength(ORDER, _nbitLength);
     if (BYTES > 2048)
       throw new Error("invalid field: expected ORDER of <= 2048 bytes");
     let sqrtP;
@@ -1115,6 +1180,7 @@ var near = (() => {
       MASK: bitMask(BITS),
       ZERO: _0n2,
       ONE: _1n2,
+      allowedLengths,
       create: /* @__PURE__ */ __name((num) => mod(num, ORDER), "create"),
       isValid: /* @__PURE__ */ __name((num) => {
         if (typeof num !== "bigint")
@@ -1122,6 +1188,8 @@ var near = (() => {
         return _0n2 <= num && num < ORDER;
       }, "isValid"),
       is0: /* @__PURE__ */ __name((num) => num === _0n2, "is0"),
+      // is valid and invertible
+      isValidNot0: /* @__PURE__ */ __name((num) => !f.is0(num) && f.isValid(num), "isValidNot0"),
       isOdd: /* @__PURE__ */ __name((num) => (num & _1n2) === _1n2, "isOdd"),
       neg: /* @__PURE__ */ __name((num) => mod(-num, ORDER), "neg"),
       eql: /* @__PURE__ */ __name((lhs, rhs) => lhs === rhs, "eql"),
@@ -1137,16 +1205,31 @@ var near = (() => {
       subN: /* @__PURE__ */ __name((lhs, rhs) => lhs - rhs, "subN"),
       mulN: /* @__PURE__ */ __name((lhs, rhs) => lhs * rhs, "mulN"),
       inv: /* @__PURE__ */ __name((num) => invert(num, ORDER), "inv"),
-      sqrt: redef.sqrt || ((n) => {
+      sqrt: _sqrt || ((n) => {
         if (!sqrtP)
           sqrtP = FpSqrt(ORDER);
         return sqrtP(f, n);
       }),
       toBytes: /* @__PURE__ */ __name((num) => isLE ? numberToBytesLE(num, BYTES) : numberToBytesBE(num, BYTES), "toBytes"),
-      fromBytes: /* @__PURE__ */ __name((bytes) => {
+      fromBytes: /* @__PURE__ */ __name((bytes, skipValidation = true) => {
+        if (allowedLengths) {
+          if (!allowedLengths.includes(bytes.length) || bytes.length > BYTES) {
+            throw new Error("Field.fromBytes: expected " + allowedLengths + " bytes, got " + bytes.length);
+          }
+          const padded = new Uint8Array(BYTES);
+          padded.set(bytes, isLE ? 0 : padded.length - bytes.length);
+          bytes = padded;
+        }
         if (bytes.length !== BYTES)
           throw new Error("Field.fromBytes: expected " + BYTES + " bytes, got " + bytes.length);
-        return isLE ? bytesToNumberLE(bytes) : bytesToNumberBE(bytes);
+        let scalar = isLE ? bytesToNumberLE(bytes) : bytesToNumberBE(bytes);
+        if (modFromBytes)
+          scalar = mod(scalar, ORDER);
+        if (!skipValidation) {
+          if (!f.isValid(scalar))
+            throw new Error("invalid field element: outside of range 0..ORDER");
+        }
+        return scalar;
       }, "fromBytes"),
       // TODO: we don't need it here, move out to separate fn
       invertBatch: /* @__PURE__ */ __name((lst) => FpInvertBatch(f, lst), "invertBatch"),
@@ -1161,11 +1244,16 @@ var near = (() => {
   // ../../node_modules/@noble/curves/esm/abstract/curve.js
   var _0n3 = BigInt(0);
   var _1n3 = BigInt(1);
-  function constTimeNegate(condition, item) {
+  function negateCt(condition, item) {
     const neg = item.negate();
     return condition ? neg : item;
   }
-  __name(constTimeNegate, "constTimeNegate");
+  __name(negateCt, "negateCt");
+  function normalizeZ(c, points) {
+    const invertedZs = FpInvertBatch(c.Fp, points.map((p) => p.Z));
+    return points.map((p, i) => c.fromAffine(p.toAffine(invertedZs[i])));
+  }
+  __name(normalizeZ, "normalizeZ");
   function validateW(W, bits) {
     if (!Number.isSafeInteger(W) || W <= 0 || W > bits)
       throw new Error("invalid window size, expected [1.." + bits + "], got W=" + W);
@@ -1222,127 +1310,141 @@ var near = (() => {
     return pointWindowSizes.get(P2) || 1;
   }
   __name(getW, "getW");
-  function wNAF(c, bits) {
-    return {
-      constTimeNegate,
-      hasPrecomputes(elm) {
-        return getW(elm) !== 1;
-      },
-      // non-const time multiplication ladder
-      unsafeLadder(elm, n, p = c.ZERO) {
-        let d = elm;
-        while (n > _0n3) {
-          if (n & _1n3)
-            p = p.add(d);
-          d = d.double();
-          n >>= _1n3;
-        }
-        return p;
-      },
-      /**
-       * Creates a wNAF precomputation window. Used for caching.
-       * Default window size is set by `utils.precompute()` and is equal to 8.
-       * Number of precomputed points depends on the curve size:
-       * 2^(𝑊−1) * (Math.ceil(𝑛 / 𝑊) + 1), where:
-       * - 𝑊 is the window size
-       * - 𝑛 is the bitlength of the curve order.
-       * For a 256-bit curve and window size 8, the number of precomputed points is 128 * 33 = 4224.
-       * @param elm Point instance
-       * @param W window size
-       * @returns precomputed point tables flattened to a single array
-       */
-      precomputeWindow(elm, W) {
-        const { windows, windowSize } = calcWOpts(W, bits);
-        const points = [];
-        let p = elm;
-        let base = p;
-        for (let window2 = 0; window2 < windows; window2++) {
-          base = p;
-          points.push(base);
-          for (let i = 1; i < windowSize; i++) {
-            base = base.add(p);
-            points.push(base);
-          }
-          p = base.double();
-        }
-        return points;
-      },
-      /**
-       * Implements ec multiplication using precomputed tables and w-ary non-adjacent form.
-       * @param W window size
-       * @param precomputes precomputed tables
-       * @param n scalar (we don't check here, but should be less than curve order)
-       * @returns real and fake (for const-time) points
-       */
-      wNAF(W, precomputes, n) {
-        let p = c.ZERO;
-        let f = c.BASE;
-        const wo = calcWOpts(W, bits);
-        for (let window2 = 0; window2 < wo.windows; window2++) {
-          const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n, window2, wo);
-          n = nextN;
-          if (isZero) {
-            f = f.add(constTimeNegate(isNegF, precomputes[offsetF]));
-          } else {
-            p = p.add(constTimeNegate(isNeg, precomputes[offset]));
-          }
-        }
-        return { p, f };
-      },
-      /**
-       * Implements ec unsafe (non const-time) multiplication using precomputed tables and w-ary non-adjacent form.
-       * @param W window size
-       * @param precomputes precomputed tables
-       * @param n scalar (we don't check here, but should be less than curve order)
-       * @param acc accumulator point to add result of multiplication
-       * @returns point
-       */
-      wNAFUnsafe(W, precomputes, n, acc = c.ZERO) {
-        const wo = calcWOpts(W, bits);
-        for (let window2 = 0; window2 < wo.windows; window2++) {
-          if (n === _0n3)
-            break;
-          const { nextN, offset, isZero, isNeg } = calcOffsets(n, window2, wo);
-          n = nextN;
-          if (isZero) {
-            continue;
-          } else {
-            const item = precomputes[offset];
-            acc = acc.add(isNeg ? item.negate() : item);
-          }
-        }
-        return acc;
-      },
-      getPrecomputes(W, P2, transform) {
-        let comp = pointPrecomputes.get(P2);
-        if (!comp) {
-          comp = this.precomputeWindow(P2, W);
-          if (W !== 1)
-            pointPrecomputes.set(P2, transform(comp));
-        }
-        return comp;
-      },
-      wNAFCached(P2, n, transform) {
-        const W = getW(P2);
-        return this.wNAF(W, this.getPrecomputes(W, P2, transform), n);
-      },
-      wNAFCachedUnsafe(P2, n, transform, prev) {
-        const W = getW(P2);
-        if (W === 1)
-          return this.unsafeLadder(P2, n, prev);
-        return this.wNAFUnsafe(W, this.getPrecomputes(W, P2, transform), n, prev);
-      },
-      // We calculate precomputes for elliptic curve point multiplication
-      // using windowed method. This specifies window size and
-      // stores precomputed values. Usually only base point would be precomputed.
-      setWindowSize(P2, W) {
-        validateW(W, bits);
-        pointWindowSizes.set(P2, W);
-        pointPrecomputes.delete(P2);
-      }
-    };
+  function assert0(n) {
+    if (n !== _0n3)
+      throw new Error("invalid wNAF");
   }
-  __name(wNAF, "wNAF");
+  __name(assert0, "assert0");
+  var wNAF = class {
+    static {
+      __name(this, "wNAF");
+    }
+    // Parametrized with a given Point class (not individual point)
+    constructor(Point, bits) {
+      this.BASE = Point.BASE;
+      this.ZERO = Point.ZERO;
+      this.Fn = Point.Fn;
+      this.bits = bits;
+    }
+    // non-const time multiplication ladder
+    _unsafeLadder(elm, n, p = this.ZERO) {
+      let d = elm;
+      while (n > _0n3) {
+        if (n & _1n3)
+          p = p.add(d);
+        d = d.double();
+        n >>= _1n3;
+      }
+      return p;
+    }
+    /**
+     * Creates a wNAF precomputation window. Used for caching.
+     * Default window size is set by `utils.precompute()` and is equal to 8.
+     * Number of precomputed points depends on the curve size:
+     * 2^(𝑊−1) * (Math.ceil(𝑛 / 𝑊) + 1), where:
+     * - 𝑊 is the window size
+     * - 𝑛 is the bitlength of the curve order.
+     * For a 256-bit curve and window size 8, the number of precomputed points is 128 * 33 = 4224.
+     * @param point Point instance
+     * @param W window size
+     * @returns precomputed point tables flattened to a single array
+     */
+    precomputeWindow(point, W) {
+      const { windows, windowSize } = calcWOpts(W, this.bits);
+      const points = [];
+      let p = point;
+      let base = p;
+      for (let window2 = 0; window2 < windows; window2++) {
+        base = p;
+        points.push(base);
+        for (let i = 1; i < windowSize; i++) {
+          base = base.add(p);
+          points.push(base);
+        }
+        p = base.double();
+      }
+      return points;
+    }
+    /**
+     * Implements ec multiplication using precomputed tables and w-ary non-adjacent form.
+     * More compact implementation:
+     * https://github.com/paulmillr/noble-secp256k1/blob/47cb1669b6e506ad66b35fe7d76132ae97465da2/index.ts#L502-L541
+     * @returns real and fake (for const-time) points
+     */
+    wNAF(W, precomputes, n) {
+      if (!this.Fn.isValid(n))
+        throw new Error("invalid scalar");
+      let p = this.ZERO;
+      let f = this.BASE;
+      const wo = calcWOpts(W, this.bits);
+      for (let window2 = 0; window2 < wo.windows; window2++) {
+        const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n, window2, wo);
+        n = nextN;
+        if (isZero) {
+          f = f.add(negateCt(isNegF, precomputes[offsetF]));
+        } else {
+          p = p.add(negateCt(isNeg, precomputes[offset]));
+        }
+      }
+      assert0(n);
+      return { p, f };
+    }
+    /**
+     * Implements ec unsafe (non const-time) multiplication using precomputed tables and w-ary non-adjacent form.
+     * @param acc accumulator point to add result of multiplication
+     * @returns point
+     */
+    wNAFUnsafe(W, precomputes, n, acc = this.ZERO) {
+      const wo = calcWOpts(W, this.bits);
+      for (let window2 = 0; window2 < wo.windows; window2++) {
+        if (n === _0n3)
+          break;
+        const { nextN, offset, isZero, isNeg } = calcOffsets(n, window2, wo);
+        n = nextN;
+        if (isZero) {
+          continue;
+        } else {
+          const item = precomputes[offset];
+          acc = acc.add(isNeg ? item.negate() : item);
+        }
+      }
+      assert0(n);
+      return acc;
+    }
+    getPrecomputes(W, point, transform) {
+      let comp = pointPrecomputes.get(point);
+      if (!comp) {
+        comp = this.precomputeWindow(point, W);
+        if (W !== 1) {
+          if (typeof transform === "function")
+            comp = transform(comp);
+          pointPrecomputes.set(point, comp);
+        }
+      }
+      return comp;
+    }
+    cached(point, scalar, transform) {
+      const W = getW(point);
+      return this.wNAF(W, this.getPrecomputes(W, point, transform), scalar);
+    }
+    unsafe(point, scalar, transform, prev) {
+      const W = getW(point);
+      if (W === 1)
+        return this._unsafeLadder(point, scalar, prev);
+      return this.wNAFUnsafe(W, this.getPrecomputes(W, point, transform), scalar, prev);
+    }
+    // We calculate precomputes for elliptic curve point multiplication
+    // using windowed method. This specifies window size and
+    // stores precomputed values. Usually only base point would be precomputed.
+    createCache(P2, W) {
+      validateW(W, this.bits);
+      pointWindowSizes.set(P2, W);
+      pointPrecomputes.delete(P2);
+    }
+    hasCache(elm) {
+      return getW(elm) !== 1;
+    }
+  };
   function pippenger(c, fieldN, points, scalars) {
     validateMSMPoints(points, c);
     validateMSMScalars(scalars, fieldN);
@@ -1383,106 +1485,100 @@ var near = (() => {
     return sum;
   }
   __name(pippenger, "pippenger");
-  function validateBasic(curve) {
-    validateField(curve.Fp);
-    validateObject(curve, {
-      n: "bigint",
-      h: "bigint",
-      Gx: "field",
-      Gy: "field"
-    }, {
-      nBitLength: "isSafeInteger",
-      nByteLength: "isSafeInteger"
-    });
-    return Object.freeze({
-      ...nLength(curve.n, curve.nBitLength),
-      ...curve,
-      ...{ p: curve.Fp.ORDER }
-    });
+  function createField(order, field, isLE) {
+    if (field) {
+      if (field.ORDER !== order)
+        throw new Error("Field.ORDER must match order: Fp == p, Fn == n");
+      validateField(field);
+      return field;
+    } else {
+      return Field(order, { isLE });
+    }
   }
-  __name(validateBasic, "validateBasic");
+  __name(createField, "createField");
+  function _createCurveFields(type, CURVE, curveOpts = {}, FpFnLE) {
+    if (FpFnLE === void 0)
+      FpFnLE = type === "edwards";
+    if (!CURVE || typeof CURVE !== "object")
+      throw new Error(`expected valid ${type} CURVE object`);
+    for (const p of ["p", "n", "h"]) {
+      const val = CURVE[p];
+      if (!(typeof val === "bigint" && val > _0n3))
+        throw new Error(`CURVE.${p} must be positive bigint`);
+    }
+    const Fp2 = createField(CURVE.p, curveOpts.Fp, FpFnLE);
+    const Fn2 = createField(CURVE.n, curveOpts.Fn, FpFnLE);
+    const _b = type === "weierstrass" ? "b" : "d";
+    const params = ["Gx", "Gy", "a", _b];
+    for (const p of params) {
+      if (!Fp2.isValid(CURVE[p]))
+        throw new Error(`CURVE.${p} must be valid field element of CURVE.Fp`);
+    }
+    CURVE = Object.freeze(Object.assign({}, CURVE));
+    return { CURVE, Fp: Fp2, Fn: Fn2 };
+  }
+  __name(_createCurveFields, "_createCurveFields");
 
   // ../../node_modules/@noble/curves/esm/abstract/edwards.js
   var _0n4 = BigInt(0);
   var _1n4 = BigInt(1);
   var _2n2 = BigInt(2);
   var _8n2 = BigInt(8);
-  var VERIFY_DEFAULT = { zip215: true };
-  function validateOpts(curve) {
-    const opts = validateBasic(curve);
-    validateObject(curve, {
-      hash: "function",
-      a: "bigint",
-      d: "bigint",
-      randomBytes: "function"
-    }, {
-      adjustScalarBytes: "function",
-      domain: "function",
-      uvRatio: "function",
-      mapToCurve: "function"
-    });
-    return Object.freeze({ ...opts });
+  function isEdValidXY(Fp2, CURVE, x, y) {
+    const x2 = Fp2.sqr(x);
+    const y2 = Fp2.sqr(y);
+    const left = Fp2.add(Fp2.mul(CURVE.a, x2), y2);
+    const right = Fp2.add(Fp2.ONE, Fp2.mul(CURVE.d, Fp2.mul(x2, y2)));
+    return Fp2.eql(left, right);
   }
-  __name(validateOpts, "validateOpts");
-  function twistedEdwards(curveDef) {
-    const CURVE = validateOpts(curveDef);
-    const { Fp: Fp2, n: CURVE_ORDER, prehash, hash: cHash, randomBytes: randomBytes2, nByteLength, h: cofactor } = CURVE;
-    const MASK = _2n2 << BigInt(nByteLength * 8) - _1n4;
-    const modP = Fp2.create;
-    const Fn = Field(CURVE.n, CURVE.nBitLength);
-    function isEdValidXY(x, y) {
-      const x2 = Fp2.sqr(x);
-      const y2 = Fp2.sqr(y);
-      const left = Fp2.add(Fp2.mul(CURVE.a, x2), y2);
-      const right = Fp2.add(Fp2.ONE, Fp2.mul(CURVE.d, Fp2.mul(x2, y2)));
-      return Fp2.eql(left, right);
-    }
-    __name(isEdValidXY, "isEdValidXY");
-    if (!isEdValidXY(CURVE.Gx, CURVE.Gy))
-      throw new Error("bad curve params: generator point");
-    const uvRatio2 = CURVE.uvRatio || ((u, v) => {
+  __name(isEdValidXY, "isEdValidXY");
+  function edwards(params, extraOpts = {}) {
+    const validated = _createCurveFields("edwards", params, extraOpts, extraOpts.FpFnLE);
+    const { Fp: Fp2, Fn: Fn2 } = validated;
+    let CURVE = validated.CURVE;
+    const { h: cofactor } = CURVE;
+    _validateObject(extraOpts, {}, { uvRatio: "function" });
+    const MASK = _2n2 << BigInt(Fn2.BYTES * 8) - _1n4;
+    const modP = /* @__PURE__ */ __name((n) => Fp2.create(n), "modP");
+    const uvRatio2 = extraOpts.uvRatio || ((u, v) => {
       try {
-        return { isValid: true, value: Fp2.sqrt(u * Fp2.inv(v)) };
+        return { isValid: true, value: Fp2.sqrt(Fp2.div(u, v)) };
       } catch (e) {
         return { isValid: false, value: _0n4 };
       }
     });
-    const adjustScalarBytes2 = CURVE.adjustScalarBytes || ((bytes) => bytes);
-    const domain = CURVE.domain || ((data, ctx, phflag) => {
-      abool("phflag", phflag);
-      if (ctx.length || phflag)
-        throw new Error("Contexts/pre-hash are not supported");
-      return data;
-    });
-    function aCoordinate(title, n, banZero = false) {
+    if (!isEdValidXY(Fp2, CURVE, CURVE.Gx, CURVE.Gy))
+      throw new Error("bad curve params: generator point");
+    function acoord(title, n, banZero = false) {
       const min = banZero ? _1n4 : _0n4;
       aInRange("coordinate " + title, n, min, MASK);
+      return n;
     }
-    __name(aCoordinate, "aCoordinate");
+    __name(acoord, "acoord");
     function aextpoint(other) {
       if (!(other instanceof Point))
         throw new Error("ExtendedPoint expected");
     }
     __name(aextpoint, "aextpoint");
     const toAffineMemo = memoized((p, iz) => {
-      const { ex: x, ey: y, ez: z } = p;
+      const { X, Y, Z } = p;
       const is0 = p.is0();
       if (iz == null)
-        iz = is0 ? _8n2 : Fp2.inv(z);
-      const ax = modP(x * iz);
-      const ay = modP(y * iz);
-      const zz = modP(z * iz);
+        iz = is0 ? _8n2 : Fp2.inv(Z);
+      const x = modP(X * iz);
+      const y = modP(Y * iz);
+      const zz = Fp2.mul(Z, iz);
       if (is0)
         return { x: _0n4, y: _1n4 };
       if (zz !== _1n4)
         throw new Error("invZ was invalid");
-      return { x: ax, y: ay };
+      return { x, y };
     });
     const assertValidMemo = memoized((p) => {
       const { a, d } = CURVE;
       if (p.is0())
         throw new Error("bad point: ZERO");
-      const { ex: X, ey: Y, ez: Z, et: T } = p;
+      const { X, Y, Z, T } = p;
       const X2 = modP(X * X);
       const Y2 = modP(Y * Y);
       const Z2 = modP(Z * Z);
@@ -1502,16 +1598,52 @@ var near = (() => {
       static {
         __name(this, "Point");
       }
-      constructor(ex, ey, ez, et) {
-        aCoordinate("x", ex);
-        aCoordinate("y", ey);
-        aCoordinate("z", ez, true);
-        aCoordinate("t", et);
-        this.ex = ex;
-        this.ey = ey;
-        this.ez = ez;
-        this.et = et;
+      constructor(X, Y, Z, T) {
+        this.X = acoord("x", X);
+        this.Y = acoord("y", Y);
+        this.Z = acoord("z", Z, true);
+        this.T = acoord("t", T);
         Object.freeze(this);
+      }
+      static CURVE() {
+        return CURVE;
+      }
+      static fromAffine(p) {
+        if (p instanceof Point)
+          throw new Error("extended point not allowed");
+        const { x, y } = p || {};
+        acoord("x", x);
+        acoord("y", y);
+        return new Point(x, y, _1n4, modP(x * y));
+      }
+      // Uses algo from RFC8032 5.1.3.
+      static fromBytes(bytes, zip215 = false) {
+        const len = Fp2.BYTES;
+        const { a, d } = CURVE;
+        bytes = copyBytes(_abytes2(bytes, len, "point"));
+        _abool2(zip215, "zip215");
+        const normed = copyBytes(bytes);
+        const lastByte = bytes[len - 1];
+        normed[len - 1] = lastByte & ~128;
+        const y = bytesToNumberLE(normed);
+        const max = zip215 ? MASK : Fp2.ORDER;
+        aInRange("point.y", y, _0n4, max);
+        const y2 = modP(y * y);
+        const u = modP(y2 - _1n4);
+        const v = modP(d * y2 - a);
+        let { isValid, value: x } = uvRatio2(u, v);
+        if (!isValid)
+          throw new Error("bad point: invalid y coordinate");
+        const isXOdd = (x & _1n4) === _1n4;
+        const isLastByteOdd = (lastByte & 128) !== 0;
+        if (!zip215 && x === _0n4 && isLastByteOdd)
+          throw new Error("bad point: x=0 and x_0=1");
+        if (isLastByteOdd !== isXOdd)
+          x = modP(-x);
+        return Point.fromAffine({ x, y });
+      }
+      static fromHex(bytes, zip215 = false) {
+        return Point.fromBytes(ensureBytes("point", bytes), zip215);
       }
       get x() {
         return this.toAffine().x;
@@ -1519,36 +1651,21 @@ var near = (() => {
       get y() {
         return this.toAffine().y;
       }
-      static fromAffine(p) {
-        if (p instanceof Point)
-          throw new Error("extended point not allowed");
-        const { x, y } = p || {};
-        aCoordinate("x", x);
-        aCoordinate("y", y);
-        return new Point(x, y, _1n4, modP(x * y));
+      precompute(windowSize = 8, isLazy = true) {
+        wnaf.createCache(this, windowSize);
+        if (!isLazy)
+          this.multiply(_2n2);
+        return this;
       }
-      static normalizeZ(points) {
-        const toInv = FpInvertBatch(Fp2, points.map((p) => p.ez));
-        return points.map((p, i) => p.toAffine(toInv[i])).map(Point.fromAffine);
-      }
-      // Multiscalar Multiplication
-      static msm(points, scalars) {
-        return pippenger(Point, Fn, points, scalars);
-      }
-      // "Private method", don't use it directly
-      _setWindowSize(windowSize) {
-        wnaf.setWindowSize(this, windowSize);
-      }
-      // Not required for fromHex(), which always creates valid points.
-      // Could be useful for fromAffine().
+      // Useful in fromAffine() - not for fromBytes(), which always created valid points.
       assertValidity() {
         assertValidMemo(this);
       }
       // Compare one point to another.
       equals(other) {
         aextpoint(other);
-        const { ex: X1, ey: Y1, ez: Z1 } = this;
-        const { ex: X2, ey: Y2, ez: Z2 } = other;
+        const { X: X1, Y: Y1, Z: Z1 } = this;
+        const { X: X2, Y: Y2, Z: Z2 } = other;
         const X1Z2 = modP(X1 * Z2);
         const X2Z1 = modP(X2 * Z1);
         const Y1Z2 = modP(Y1 * Z2);
@@ -1559,27 +1676,27 @@ var near = (() => {
         return this.equals(Point.ZERO);
       }
       negate() {
-        return new Point(modP(-this.ex), this.ey, this.ez, modP(-this.et));
+        return new Point(modP(-this.X), this.Y, this.Z, modP(-this.T));
       }
       // Fast algo for doubling Extended Point.
       // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
       // Cost: 4M + 4S + 1*a + 6add + 1*2.
       double() {
         const { a } = CURVE;
-        const { ex: X1, ey: Y1, ez: Z1 } = this;
+        const { X: X1, Y: Y1, Z: Z1 } = this;
         const A = modP(X1 * X1);
         const B = modP(Y1 * Y1);
         const C = modP(_2n2 * modP(Z1 * Z1));
         const D = modP(a * A);
         const x1y1 = X1 + Y1;
         const E = modP(modP(x1y1 * x1y1) - A - B);
-        const G2 = D + B;
-        const F = G2 - C;
+        const G = D + B;
+        const F = G - C;
         const H = D - B;
         const X3 = modP(E * F);
-        const Y3 = modP(G2 * H);
+        const Y3 = modP(G * H);
         const T3 = modP(E * H);
-        const Z3 = modP(F * G2);
+        const Z3 = modP(F * G);
         return new Point(X3, Y3, Z3, T3);
       }
       // Fast algo for adding 2 Extended Points.
@@ -1588,34 +1705,31 @@ var near = (() => {
       add(other) {
         aextpoint(other);
         const { a, d } = CURVE;
-        const { ex: X1, ey: Y1, ez: Z1, et: T1 } = this;
-        const { ex: X2, ey: Y2, ez: Z2, et: T2 } = other;
+        const { X: X1, Y: Y1, Z: Z1, T: T1 } = this;
+        const { X: X2, Y: Y2, Z: Z2, T: T2 } = other;
         const A = modP(X1 * X2);
         const B = modP(Y1 * Y2);
         const C = modP(T1 * d * T2);
         const D = modP(Z1 * Z2);
         const E = modP((X1 + Y1) * (X2 + Y2) - A - B);
         const F = D - C;
-        const G2 = D + C;
+        const G = D + C;
         const H = modP(B - a * A);
         const X3 = modP(E * F);
-        const Y3 = modP(G2 * H);
+        const Y3 = modP(G * H);
         const T3 = modP(E * H);
-        const Z3 = modP(F * G2);
+        const Z3 = modP(F * G);
         return new Point(X3, Y3, Z3, T3);
       }
       subtract(other) {
         return this.add(other.negate());
       }
-      wNAF(n) {
-        return wnaf.wNAFCached(this, n, Point.normalizeZ);
-      }
       // Constant-time multiplication.
       multiply(scalar) {
-        const n = scalar;
-        aInRange("scalar", n, _1n4, CURVE_ORDER);
-        const { p, f } = this.wNAF(n);
-        return Point.normalizeZ([p, f])[0];
+        if (!Fn2.isValidNot0(scalar))
+          throw new Error("invalid scalar: expected 1 <= sc < curve.n");
+        const { p, f } = wnaf.cached(this, scalar, (p2) => normalizeZ(Point, p2));
+        return normalizeZ(Point, [p, f])[0];
       }
       // Non-constant-time multiplication. Uses double-and-add algorithm.
       // It's faster, but should only be used when you don't care about
@@ -1623,13 +1737,13 @@ var near = (() => {
       // Does NOT allow scalars higher than CURVE.n.
       // Accepts optional accumulator to merge with multiply (important for sparse scalars)
       multiplyUnsafe(scalar, acc = Point.ZERO) {
-        const n = scalar;
-        aInRange("scalar", n, _0n4, CURVE_ORDER);
-        if (n === _0n4)
-          return I;
-        if (this.is0() || n === _1n4)
+        if (!Fn2.isValid(scalar))
+          throw new Error("invalid scalar: expected 0 <= sc < curve.n");
+        if (scalar === _0n4)
+          return Point.ZERO;
+        if (this.is0() || scalar === _1n4)
           return this;
-        return wnaf.wNAFCachedUnsafe(this, n, Point.normalizeZ, acc);
+        return wnaf.unsafe(this, scalar, (p) => normalizeZ(Point, p), acc);
       }
       // Checks if point is of small order.
       // If you add something to small order point, you will have "dirty"
@@ -1641,74 +1755,161 @@ var near = (() => {
       // Multiplies point by curve order and checks if the result is 0.
       // Returns `false` is the point is dirty.
       isTorsionFree() {
-        return wnaf.unsafeLadder(this, CURVE_ORDER).is0();
+        return wnaf.unsafe(this, CURVE.n).is0();
       }
       // Converts Extended point to default (x, y) coordinates.
       // Can accept precomputed Z^-1 - for example, from invertBatch.
-      toAffine(iz) {
-        return toAffineMemo(this, iz);
+      toAffine(invertedZ) {
+        return toAffineMemo(this, invertedZ);
       }
       clearCofactor() {
-        const { h: cofactor2 } = CURVE;
-        if (cofactor2 === _1n4)
+        if (cofactor === _1n4)
           return this;
-        return this.multiplyUnsafe(cofactor2);
+        return this.multiplyUnsafe(cofactor);
       }
-      // Converts hash string or Uint8Array to Point.
-      // Uses algo from RFC8032 5.1.3.
-      static fromHex(hex, zip215 = false) {
-        const { d, a } = CURVE;
-        const len = Fp2.BYTES;
-        hex = ensureBytes("pointHex", hex, len);
-        abool("zip215", zip215);
-        const normed = hex.slice();
-        const lastByte = hex[len - 1];
-        normed[len - 1] = lastByte & ~128;
-        const y = bytesToNumberLE(normed);
-        const max = zip215 ? MASK : Fp2.ORDER;
-        aInRange("pointHex.y", y, _0n4, max);
-        const y2 = modP(y * y);
-        const u = modP(y2 - _1n4);
-        const v = modP(d * y2 - a);
-        let { isValid, value: x } = uvRatio2(u, v);
-        if (!isValid)
-          throw new Error("Point.fromHex: invalid y coordinate");
-        const isXOdd = (x & _1n4) === _1n4;
-        const isLastByteOdd = (lastByte & 128) !== 0;
-        if (!zip215 && x === _0n4 && isLastByteOdd)
-          throw new Error("Point.fromHex: x=0 and x_0=1");
-        if (isLastByteOdd !== isXOdd)
-          x = modP(-x);
-        return Point.fromAffine({ x, y });
-      }
-      static fromPrivateKey(privKey) {
-        const { scalar } = getPrivateScalar(privKey);
-        return G.multiply(scalar);
-      }
-      toRawBytes() {
+      toBytes() {
         const { x, y } = this.toAffine();
-        const bytes = numberToBytesLE(y, Fp2.BYTES);
+        const bytes = Fp2.toBytes(y);
         bytes[bytes.length - 1] |= x & _1n4 ? 128 : 0;
         return bytes;
       }
       toHex() {
-        return bytesToHex(this.toRawBytes());
+        return bytesToHex(this.toBytes());
+      }
+      toString() {
+        return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
+      }
+      // TODO: remove
+      get ex() {
+        return this.X;
+      }
+      get ey() {
+        return this.Y;
+      }
+      get ez() {
+        return this.Z;
+      }
+      get et() {
+        return this.T;
+      }
+      static normalizeZ(points) {
+        return normalizeZ(Point, points);
+      }
+      static msm(points, scalars) {
+        return pippenger(Point, Fn2, points, scalars);
+      }
+      _setWindowSize(windowSize) {
+        this.precompute(windowSize);
+      }
+      toRawBytes() {
+        return this.toBytes();
       }
     }
     Point.BASE = new Point(CURVE.Gx, CURVE.Gy, _1n4, modP(CURVE.Gx * CURVE.Gy));
     Point.ZERO = new Point(_0n4, _1n4, _1n4, _0n4);
-    const { BASE: G, ZERO: I } = Point;
-    const wnaf = wNAF(Point, nByteLength * 8);
-    function modN(a) {
-      return mod(a, CURVE_ORDER);
+    Point.Fp = Fp2;
+    Point.Fn = Fn2;
+    const wnaf = new wNAF(Point, Fn2.BITS);
+    Point.BASE.precompute(8);
+    return Point;
+  }
+  __name(edwards, "edwards");
+  var PrimeEdwardsPoint = class {
+    static {
+      __name(this, "PrimeEdwardsPoint");
     }
-    __name(modN, "modN");
+    constructor(ep) {
+      this.ep = ep;
+    }
+    // Static methods that must be implemented by subclasses
+    static fromBytes(_bytes) {
+      notImplemented();
+    }
+    static fromHex(_hex) {
+      notImplemented();
+    }
+    get x() {
+      return this.toAffine().x;
+    }
+    get y() {
+      return this.toAffine().y;
+    }
+    // Common implementations
+    clearCofactor() {
+      return this;
+    }
+    assertValidity() {
+      this.ep.assertValidity();
+    }
+    toAffine(invertedZ) {
+      return this.ep.toAffine(invertedZ);
+    }
+    toHex() {
+      return bytesToHex(this.toBytes());
+    }
+    toString() {
+      return this.toHex();
+    }
+    isTorsionFree() {
+      return true;
+    }
+    isSmallOrder() {
+      return false;
+    }
+    add(other) {
+      this.assertSame(other);
+      return this.init(this.ep.add(other.ep));
+    }
+    subtract(other) {
+      this.assertSame(other);
+      return this.init(this.ep.subtract(other.ep));
+    }
+    multiply(scalar) {
+      return this.init(this.ep.multiply(scalar));
+    }
+    multiplyUnsafe(scalar) {
+      return this.init(this.ep.multiplyUnsafe(scalar));
+    }
+    double() {
+      return this.init(this.ep.double());
+    }
+    negate() {
+      return this.init(this.ep.negate());
+    }
+    precompute(windowSize, isLazy) {
+      return this.init(this.ep.precompute(windowSize, isLazy));
+    }
+    /** @deprecated use `toBytes` */
+    toRawBytes() {
+      return this.toBytes();
+    }
+  };
+  function eddsa(Point, cHash, eddsaOpts = {}) {
+    if (typeof cHash !== "function")
+      throw new Error('"hash" function param is required');
+    _validateObject(eddsaOpts, {}, {
+      adjustScalarBytes: "function",
+      randomBytes: "function",
+      domain: "function",
+      prehash: "function",
+      mapToCurve: "function"
+    });
+    const { prehash } = eddsaOpts;
+    const { BASE, Fp: Fp2, Fn: Fn2 } = Point;
+    const randomBytes2 = eddsaOpts.randomBytes || randomBytes;
+    const adjustScalarBytes2 = eddsaOpts.adjustScalarBytes || ((bytes) => bytes);
+    const domain = eddsaOpts.domain || ((data, ctx, phflag) => {
+      _abool2(phflag, "phflag");
+      if (ctx.length || phflag)
+        throw new Error("Contexts/pre-hash are not supported");
+      return data;
+    });
     function modN_LE(hash) {
-      return modN(bytesToNumberLE(hash));
+      return Fn2.create(bytesToNumberLE(hash));
     }
     __name(modN_LE, "modN_LE");
     function getPrivateScalar(key) {
-      const len = Fp2.BYTES;
+      const len = lengths.secretKey;
       key = ensureBytes("private key", key, len);
       const hashed = ensureBytes("hashed private key", cHash(key), 2 * len);
       const head = adjustScalarBytes2(hashed.slice(0, len));
@@ -1717,15 +1918,15 @@ var near = (() => {
       return { head, prefix, scalar };
     }
     __name(getPrivateScalar, "getPrivateScalar");
-    function getExtendedPublicKey(key) {
-      const { head, prefix, scalar } = getPrivateScalar(key);
-      const point = G.multiply(scalar);
-      const pointBytes = point.toRawBytes();
+    function getExtendedPublicKey(secretKey) {
+      const { head, prefix, scalar } = getPrivateScalar(secretKey);
+      const point = BASE.multiply(scalar);
+      const pointBytes = point.toBytes();
       return { head, prefix, scalar, point, pointBytes };
     }
     __name(getExtendedPublicKey, "getExtendedPublicKey");
-    function getPublicKey(privKey) {
-      return getExtendedPublicKey(privKey).pointBytes;
+    function getPublicKey(secretKey) {
+      return getExtendedPublicKey(secretKey).pointBytes;
     }
     __name(getPublicKey, "getPublicKey");
     function hashDomainToScalar(context = Uint8Array.of(), ...msgs) {
@@ -1733,87 +1934,187 @@ var near = (() => {
       return modN_LE(cHash(domain(msg, ensureBytes("context", context), !!prehash)));
     }
     __name(hashDomainToScalar, "hashDomainToScalar");
-    function sign(msg, privKey, options = {}) {
+    function sign(msg, secretKey, options = {}) {
       msg = ensureBytes("message", msg);
       if (prehash)
         msg = prehash(msg);
-      const { prefix, scalar, pointBytes } = getExtendedPublicKey(privKey);
+      const { prefix, scalar, pointBytes } = getExtendedPublicKey(secretKey);
       const r = hashDomainToScalar(options.context, prefix, msg);
-      const R = G.multiply(r).toRawBytes();
+      const R = BASE.multiply(r).toBytes();
       const k = hashDomainToScalar(options.context, R, pointBytes, msg);
-      const s = modN(r + k * scalar);
-      aInRange("signature.s", s, _0n4, CURVE_ORDER);
-      const res = concatBytes(R, numberToBytesLE(s, Fp2.BYTES));
-      return ensureBytes("result", res, Fp2.BYTES * 2);
+      const s = Fn2.create(r + k * scalar);
+      if (!Fn2.isValid(s))
+        throw new Error("sign failed: invalid s");
+      const rs = concatBytes(R, Fn2.toBytes(s));
+      return _abytes2(rs, lengths.signature, "result");
     }
     __name(sign, "sign");
-    const verifyOpts = VERIFY_DEFAULT;
+    const verifyOpts = { zip215: true };
     function verify(sig, msg, publicKey2, options = verifyOpts) {
       const { context, zip215 } = options;
-      const len = Fp2.BYTES;
-      sig = ensureBytes("signature", sig, 2 * len);
+      const len = lengths.signature;
+      sig = ensureBytes("signature", sig, len);
       msg = ensureBytes("message", msg);
-      publicKey2 = ensureBytes("publicKey", publicKey2, len);
+      publicKey2 = ensureBytes("publicKey", publicKey2, lengths.publicKey);
       if (zip215 !== void 0)
-        abool("zip215", zip215);
+        _abool2(zip215, "zip215");
       if (prehash)
         msg = prehash(msg);
-      const s = bytesToNumberLE(sig.slice(len, 2 * len));
+      const mid = len / 2;
+      const r = sig.subarray(0, mid);
+      const s = bytesToNumberLE(sig.subarray(mid, len));
       let A, R, SB;
       try {
-        A = Point.fromHex(publicKey2, zip215);
-        R = Point.fromHex(sig.slice(0, len), zip215);
-        SB = G.multiplyUnsafe(s);
+        A = Point.fromBytes(publicKey2, zip215);
+        R = Point.fromBytes(r, zip215);
+        SB = BASE.multiplyUnsafe(s);
       } catch (error) {
         return false;
       }
       if (!zip215 && A.isSmallOrder())
         return false;
-      const k = hashDomainToScalar(context, R.toRawBytes(), A.toRawBytes(), msg);
+      const k = hashDomainToScalar(context, R.toBytes(), A.toBytes(), msg);
       const RkA = R.add(A.multiplyUnsafe(k));
-      return RkA.subtract(SB).clearCofactor().equals(Point.ZERO);
+      return RkA.subtract(SB).clearCofactor().is0();
     }
     __name(verify, "verify");
-    G._setWindowSize(8);
+    const _size = Fp2.BYTES;
+    const lengths = {
+      secretKey: _size,
+      publicKey: _size,
+      signature: 2 * _size,
+      seed: _size
+    };
+    function randomSecretKey(seed = randomBytes2(lengths.seed)) {
+      return _abytes2(seed, lengths.seed, "seed");
+    }
+    __name(randomSecretKey, "randomSecretKey");
+    function keygen(seed) {
+      const secretKey = utils2.randomSecretKey(seed);
+      return { secretKey, publicKey: getPublicKey(secretKey) };
+    }
+    __name(keygen, "keygen");
+    function isValidSecretKey(key) {
+      return isBytes(key) && key.length === Fn2.BYTES;
+    }
+    __name(isValidSecretKey, "isValidSecretKey");
+    function isValidPublicKey(key, zip215) {
+      try {
+        return !!Point.fromBytes(key, zip215);
+      } catch (error) {
+        return false;
+      }
+    }
+    __name(isValidPublicKey, "isValidPublicKey");
     const utils2 = {
       getExtendedPublicKey,
-      /** ed25519 priv keys are uniform 32b. No need to check for modulo bias, like in secp256k1. */
-      randomPrivateKey: /* @__PURE__ */ __name(() => randomBytes2(Fp2.BYTES), "randomPrivateKey"),
+      randomSecretKey,
+      isValidSecretKey,
+      isValidPublicKey,
       /**
-       * We're doing scalar multiplication (used in getPublicKey etc) with precomputed BASE_POINT
-       * values. This slows down first getPublicKey() by milliseconds (see Speed section),
-       * but allows to speed-up subsequent getPublicKey() calls up to 20x.
-       * @param windowSize 2, 4, 8, 16
+       * Converts ed public key to x public key. Uses formula:
+       * - ed25519:
+       *   - `(u, v) = ((1+y)/(1-y), sqrt(-486664)*u/x)`
+       *   - `(x, y) = (sqrt(-486664)*u/v, (u-1)/(u+1))`
+       * - ed448:
+       *   - `(u, v) = ((y-1)/(y+1), sqrt(156324)*u/x)`
+       *   - `(x, y) = (sqrt(156324)*u/v, (1+u)/(1-u))`
        */
+      toMontgomery(publicKey2) {
+        const { y } = Point.fromBytes(publicKey2);
+        const size = lengths.publicKey;
+        const is25519 = size === 32;
+        if (!is25519 && size !== 57)
+          throw new Error("only defined for 25519 and 448");
+        const u = is25519 ? Fp2.div(_1n4 + y, _1n4 - y) : Fp2.div(y - _1n4, y + _1n4);
+        return Fp2.toBytes(u);
+      },
+      toMontgomerySecret(secretKey) {
+        const size = lengths.secretKey;
+        _abytes2(secretKey, size);
+        const hashed = cHash(secretKey.subarray(0, size));
+        return adjustScalarBytes2(hashed).subarray(0, size);
+      },
+      /** @deprecated */
+      randomPrivateKey: randomSecretKey,
+      /** @deprecated */
       precompute(windowSize = 8, point = Point.BASE) {
-        point._setWindowSize(windowSize);
-        point.multiply(BigInt(3));
-        return point;
+        return point.precompute(windowSize, false);
       }
     };
-    return {
-      CURVE,
+    return Object.freeze({
+      keygen,
       getPublicKey,
       sign,
       verify,
-      ExtendedPoint: Point,
-      utils: utils2
+      utils: utils2,
+      Point,
+      lengths
+    });
+  }
+  __name(eddsa, "eddsa");
+  function _eddsa_legacy_opts_to_new(c) {
+    const CURVE = {
+      a: c.a,
+      d: c.d,
+      p: c.Fp.ORDER,
+      n: c.n,
+      h: c.h,
+      Gx: c.Gx,
+      Gy: c.Gy
     };
+    const Fp2 = c.Fp;
+    const Fn2 = Field(CURVE.n, c.nBitLength, true);
+    const curveOpts = { Fp: Fp2, Fn: Fn2, uvRatio: c.uvRatio };
+    const eddsaOpts = {
+      randomBytes: c.randomBytes,
+      adjustScalarBytes: c.adjustScalarBytes,
+      domain: c.domain,
+      prehash: c.prehash,
+      mapToCurve: c.mapToCurve
+    };
+    return { CURVE, curveOpts, hash: c.hash, eddsaOpts };
+  }
+  __name(_eddsa_legacy_opts_to_new, "_eddsa_legacy_opts_to_new");
+  function _eddsa_new_output_to_legacy(c, eddsa2) {
+    const Point = eddsa2.Point;
+    const legacy = Object.assign({}, eddsa2, {
+      ExtendedPoint: Point,
+      CURVE: c,
+      nBitLength: Point.Fn.BITS,
+      nByteLength: Point.Fn.BYTES
+    });
+    return legacy;
+  }
+  __name(_eddsa_new_output_to_legacy, "_eddsa_new_output_to_legacy");
+  function twistedEdwards(c) {
+    const { CURVE, curveOpts, hash, eddsaOpts } = _eddsa_legacy_opts_to_new(c);
+    const Point = edwards(CURVE, curveOpts);
+    const EDDSA = eddsa(Point, hash, eddsaOpts);
+    return _eddsa_new_output_to_legacy(c, EDDSA);
   }
   __name(twistedEdwards, "twistedEdwards");
 
   // ../../node_modules/@noble/curves/esm/ed25519.js
-  var ED25519_P = BigInt("57896044618658097711785492504343953926634992332820282019728792003956564819949");
-  var ED25519_SQRT_M1 = /* @__PURE__ */ BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");
-  var _0n5 = BigInt(0);
+  var _0n5 = /* @__PURE__ */ BigInt(0);
   var _1n5 = BigInt(1);
   var _2n3 = BigInt(2);
   var _3n2 = BigInt(3);
   var _5n2 = BigInt(5);
   var _8n3 = BigInt(8);
+  var ed25519_CURVE_p = BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed");
+  var ed25519_CURVE = /* @__PURE__ */ (() => ({
+    p: ed25519_CURVE_p,
+    n: BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),
+    h: _8n3,
+    a: BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),
+    d: BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),
+    Gx: BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),
+    Gy: BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")
+  }))();
   function ed25519_pow_2_252_3(x) {
     const _10n = BigInt(10), _20n = BigInt(20), _40n = BigInt(40), _80n = BigInt(80);
-    const P2 = ED25519_P;
+    const P2 = ed25519_CURVE_p;
     const x2 = x * x % P2;
     const b2 = x2 * x % P2;
     const b4 = pow2(b2, _2n3, P2) * b2 % P2;
@@ -1836,8 +2137,9 @@ var near = (() => {
     return bytes;
   }
   __name(adjustScalarBytes, "adjustScalarBytes");
+  var ED25519_SQRT_M1 = /* @__PURE__ */ BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");
   function uvRatio(u, v) {
-    const P2 = ED25519_P;
+    const P2 = ed25519_CURVE_p;
     const v3 = mod(v * v * v, P2);
     const v7 = mod(v3 * v3 * v, P2);
     const pow = ed25519_pow_2_252_3(u * v7).pow_p_5_8;
@@ -1857,21 +2159,12 @@ var near = (() => {
     return { isValid: useRoot1 || useRoot2, value: x };
   }
   __name(uvRatio, "uvRatio");
-  var Fp = /* @__PURE__ */ (() => Field(ED25519_P, void 0, true))();
+  var Fp = /* @__PURE__ */ (() => Field(ed25519_CURVE.p, { isLE: true }))();
+  var Fn = /* @__PURE__ */ (() => Field(ed25519_CURVE.n, { isLE: true }))();
   var ed25519Defaults = /* @__PURE__ */ (() => ({
-    // Removing Fp.create() will still work, and is 10% faster on sign
-    a: Fp.create(BigInt(-1)),
-    // d is -121665/121666 a.k.a. Fp.neg(121665 * Fp.inv(121666))
-    d: BigInt("37095705934669439343138083508754565189542113879843219016388785533085940283555"),
-    // Finite field 2n**255n - 19n
+    ...ed25519_CURVE,
     Fp,
-    // Subgroup order 2n**252n + 27742317777372353535851937790883648493n;
-    n: BigInt("7237005577332262213973186563042994240857116359379907606001950938285454250989"),
-    h: _8n3,
-    Gx: BigInt("15112221349535400772501151409588531511454012693041857206046113283949847762202"),
-    Gy: BigInt("46316835694926478169428394003475163141307993866256225615783033603165251855960"),
     hash: sha512,
-    randomBytes,
     adjustScalarBytes,
     // dom2
     // Ratio of u to v. Allows us to combine inversion and square root. Uses algo from RFC8032 5.1.3.
@@ -1879,12 +2172,165 @@ var near = (() => {
     uvRatio
   }))();
   var ed25519 = /* @__PURE__ */ (() => twistedEdwards(ed25519Defaults))();
+  var SQRT_M1 = ED25519_SQRT_M1;
+  var SQRT_AD_MINUS_ONE = /* @__PURE__ */ BigInt("25063068953384623474111414158702152701244531502492656460079210482610430750235");
+  var INVSQRT_A_MINUS_D = /* @__PURE__ */ BigInt("54469307008909316920995813868745141605393597292927456921205312896311721017578");
+  var ONE_MINUS_D_SQ = /* @__PURE__ */ BigInt("1159843021668779879193775521855586647937357759715417654439879720876111806838");
+  var D_MINUS_ONE_SQ = /* @__PURE__ */ BigInt("40440834346308536858101042469323190826248399146238708352240133220865137265952");
+  var invertSqrt = /* @__PURE__ */ __name((number) => uvRatio(_1n5, number), "invertSqrt");
+  var MAX_255B = /* @__PURE__ */ BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+  var bytes255ToNumberLE = /* @__PURE__ */ __name((bytes) => ed25519.Point.Fp.create(bytesToNumberLE(bytes) & MAX_255B), "bytes255ToNumberLE");
+  function calcElligatorRistrettoMap(r0) {
+    const { d } = ed25519_CURVE;
+    const P2 = ed25519_CURVE_p;
+    const mod2 = /* @__PURE__ */ __name((n) => Fp.create(n), "mod");
+    const r = mod2(SQRT_M1 * r0 * r0);
+    const Ns = mod2((r + _1n5) * ONE_MINUS_D_SQ);
+    let c = BigInt(-1);
+    const D = mod2((c - d * r) * mod2(r + d));
+    let { isValid: Ns_D_is_sq, value: s } = uvRatio(Ns, D);
+    let s_ = mod2(s * r0);
+    if (!isNegativeLE(s_, P2))
+      s_ = mod2(-s_);
+    if (!Ns_D_is_sq)
+      s = s_;
+    if (!Ns_D_is_sq)
+      c = r;
+    const Nt = mod2(c * (r - _1n5) * D_MINUS_ONE_SQ - D);
+    const s2 = s * s;
+    const W0 = mod2((s + s) * D);
+    const W1 = mod2(Nt * SQRT_AD_MINUS_ONE);
+    const W2 = mod2(_1n5 - s2);
+    const W3 = mod2(_1n5 + s2);
+    return new ed25519.Point(mod2(W0 * W3), mod2(W2 * W1), mod2(W1 * W3), mod2(W0 * W2));
+  }
+  __name(calcElligatorRistrettoMap, "calcElligatorRistrettoMap");
+  function ristretto255_map(bytes) {
+    abytes(bytes, 64);
+    const r1 = bytes255ToNumberLE(bytes.subarray(0, 32));
+    const R1 = calcElligatorRistrettoMap(r1);
+    const r2 = bytes255ToNumberLE(bytes.subarray(32, 64));
+    const R2 = calcElligatorRistrettoMap(r2);
+    return new _RistrettoPoint(R1.add(R2));
+  }
+  __name(ristretto255_map, "ristretto255_map");
+  var _RistrettoPoint = class __RistrettoPoint extends PrimeEdwardsPoint {
+    static {
+      __name(this, "_RistrettoPoint");
+    }
+    constructor(ep) {
+      super(ep);
+    }
+    static fromAffine(ap) {
+      return new __RistrettoPoint(ed25519.Point.fromAffine(ap));
+    }
+    assertSame(other) {
+      if (!(other instanceof __RistrettoPoint))
+        throw new Error("RistrettoPoint expected");
+    }
+    init(ep) {
+      return new __RistrettoPoint(ep);
+    }
+    /** @deprecated use `import { ristretto255_hasher } from '@noble/curves/ed25519.js';` */
+    static hashToCurve(hex) {
+      return ristretto255_map(ensureBytes("ristrettoHash", hex, 64));
+    }
+    static fromBytes(bytes) {
+      abytes(bytes, 32);
+      const { a, d } = ed25519_CURVE;
+      const P2 = ed25519_CURVE_p;
+      const mod2 = /* @__PURE__ */ __name((n) => Fp.create(n), "mod");
+      const s = bytes255ToNumberLE(bytes);
+      if (!equalBytes(Fp.toBytes(s), bytes) || isNegativeLE(s, P2))
+        throw new Error("invalid ristretto255 encoding 1");
+      const s2 = mod2(s * s);
+      const u1 = mod2(_1n5 + a * s2);
+      const u2 = mod2(_1n5 - a * s2);
+      const u1_2 = mod2(u1 * u1);
+      const u2_2 = mod2(u2 * u2);
+      const v = mod2(a * d * u1_2 - u2_2);
+      const { isValid, value: I } = invertSqrt(mod2(v * u2_2));
+      const Dx = mod2(I * u2);
+      const Dy = mod2(I * Dx * v);
+      let x = mod2((s + s) * Dx);
+      if (isNegativeLE(x, P2))
+        x = mod2(-x);
+      const y = mod2(u1 * Dy);
+      const t = mod2(x * y);
+      if (!isValid || isNegativeLE(t, P2) || y === _0n5)
+        throw new Error("invalid ristretto255 encoding 2");
+      return new __RistrettoPoint(new ed25519.Point(x, y, _1n5, t));
+    }
+    /**
+     * Converts ristretto-encoded string to ristretto point.
+     * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-decode).
+     * @param hex Ristretto-encoded 32 bytes. Not every 32-byte string is valid ristretto encoding
+     */
+    static fromHex(hex) {
+      return __RistrettoPoint.fromBytes(ensureBytes("ristrettoHex", hex, 32));
+    }
+    static msm(points, scalars) {
+      return pippenger(__RistrettoPoint, ed25519.Point.Fn, points, scalars);
+    }
+    /**
+     * Encodes ristretto point to Uint8Array.
+     * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-encode).
+     */
+    toBytes() {
+      let { X, Y, Z, T } = this.ep;
+      const P2 = ed25519_CURVE_p;
+      const mod2 = /* @__PURE__ */ __name((n) => Fp.create(n), "mod");
+      const u1 = mod2(mod2(Z + Y) * mod2(Z - Y));
+      const u2 = mod2(X * Y);
+      const u2sq = mod2(u2 * u2);
+      const { value: invsqrt } = invertSqrt(mod2(u1 * u2sq));
+      const D1 = mod2(invsqrt * u1);
+      const D2 = mod2(invsqrt * u2);
+      const zInv = mod2(D1 * D2 * T);
+      let D;
+      if (isNegativeLE(T * zInv, P2)) {
+        let _x = mod2(Y * SQRT_M1);
+        let _y = mod2(X * SQRT_M1);
+        X = _x;
+        Y = _y;
+        D = mod2(D1 * INVSQRT_A_MINUS_D);
+      } else {
+        D = D2;
+      }
+      if (isNegativeLE(X * zInv, P2))
+        Y = mod2(-Y);
+      let s = mod2((Z - Y) * D);
+      if (isNegativeLE(s, P2))
+        s = mod2(-s);
+      return Fp.toBytes(s);
+    }
+    /**
+     * Compares two Ristretto points.
+     * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-equals).
+     */
+    equals(other) {
+      this.assertSame(other);
+      const { X: X1, Y: Y1 } = this.ep;
+      const { X: X2, Y: Y2 } = other.ep;
+      const mod2 = /* @__PURE__ */ __name((n) => Fp.create(n), "mod");
+      const one = mod2(X1 * Y2) === mod2(Y1 * X2);
+      const two = mod2(Y1 * Y2) === mod2(X1 * X2);
+      return one || two;
+    }
+    is0() {
+      return this.equals(__RistrettoPoint.ZERO);
+    }
+  };
+  _RistrettoPoint.BASE = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.BASE))();
+  _RistrettoPoint.ZERO = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.ZERO))();
+  _RistrettoPoint.Fp = /* @__PURE__ */ (() => Fp)();
+  _RistrettoPoint.Fn = /* @__PURE__ */ (() => Fn)();
 
-  // ../utils/node_modules/base58-js/base58_chars.js
+  // ../../node_modules/base58-js/base58_chars.mjs
   var base58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   var base58_chars_default = base58_chars;
 
-  // ../utils/node_modules/base58-js/base58_to_binary.js
+  // ../../node_modules/base58-js/base58_to_binary.mjs
   function base58_to_binary(base58String) {
     if (!base58String || typeof base58String !== "string")
       throw new Error(`Expected base58 string but got \u201C${base58String}\u201D`);
@@ -1915,7 +2361,7 @@ var near = (() => {
   __name(base58_to_binary, "base58_to_binary");
   var base58_to_binary_default = base58_to_binary;
 
-  // ../utils/node_modules/base58-js/create_base58_map.js
+  // ../../node_modules/base58-js/create_base58_map.mjs
   var create_base58_map = /* @__PURE__ */ __name(() => {
     const base58M = Array(256).fill(-1);
     for (let i = 0; i < base58_chars_default.length; ++i)
@@ -1924,7 +2370,7 @@ var near = (() => {
   }, "create_base58_map");
   var create_base58_map_default = create_base58_map;
 
-  // ../utils/node_modules/base58-js/binary_to_base58.js
+  // ../../node_modules/base58-js/binary_to_base58.mjs
   var base58Map = create_base58_map_default();
   function binary_to_base58(uint8array) {
     const result = [];
@@ -2505,12 +2951,19 @@ var near = (() => {
     if (!b64re.test(asc))
       throw new TypeError("malformed base64.");
     asc += "==".slice(2 - (asc.length & 3));
-    let u24, bin = "", r1, r2;
+    let u24, r1, r2;
+    let binArray = [];
     for (let i = 0; i < asc.length; ) {
       u24 = b64tab[asc.charAt(i++)] << 18 | b64tab[asc.charAt(i++)] << 12 | (r1 = b64tab[asc.charAt(i++)]) << 6 | (r2 = b64tab[asc.charAt(i++)]);
-      bin += r1 === 64 ? _fromCC(u24 >> 16 & 255) : r2 === 64 ? _fromCC(u24 >> 16 & 255, u24 >> 8 & 255) : _fromCC(u24 >> 16 & 255, u24 >> 8 & 255, u24 & 255);
+      if (r1 === 64) {
+        binArray.push(_fromCC(u24 >> 16 & 255));
+      } else if (r2 === 64) {
+        binArray.push(_fromCC(u24 >> 16 & 255, u24 >> 8 & 255));
+      } else {
+        binArray.push(_fromCC(u24 >> 16 & 255, u24 >> 8 & 255, u24 & 255));
+      }
     }
-    return bin;
+    return binArray.join("");
   }, "atobPolyfill");
   var _atob = typeof atob === "function" ? (asc) => atob(_tidyB64(asc)) : _hasBuffer ? (asc) => Buffer.from(asc, "base64").toString("binary") : atobPolyfill;
   var _toUint8Array = _hasBuffer ? (a) => _U8Afrom(Buffer.from(a, "base64")) : (a) => _U8Afrom(_atob(a).split("").map((c) => c.charCodeAt(0)));
@@ -2712,7 +3165,7 @@ var near = (() => {
   // ../../node_modules/borsh/lib/esm/buffer.js
   var EncodeBuffer = (
     /** @class */
-    function() {
+    (function() {
       function EncodeBuffer2() {
         this.offset = 0;
         this.buffer_size = 256;
@@ -2746,11 +3199,11 @@ var near = (() => {
         this.offset += from.length;
       };
       return EncodeBuffer2;
-    }()
+    })()
   );
   var DecodeBuffer = (
     /** @class */
-    function() {
+    (function() {
       function DecodeBuffer2(buf) {
         this.offset = 0;
         this.buffer_size = buf.length;
@@ -2780,11 +3233,11 @@ var near = (() => {
         return ret;
       };
       return DecodeBuffer2;
-    }()
+    })()
   );
 
   // ../../node_modules/borsh/lib/esm/utils.js
-  var __extends = /* @__PURE__ */ function() {
+  var __extends = /* @__PURE__ */ (function() {
     var extendStatics = /* @__PURE__ */ __name(function(d, b) {
       extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
         d2.__proto__ = b2;
@@ -2803,7 +3256,7 @@ var near = (() => {
       __name(__, "__");
       d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
-  }();
+  })();
   function isArrayLike(value) {
     return Array.isArray(value) || !!value && typeof value === "object" && "length" in value && typeof value.length === "number" && (value.length === 0 || value.length > 0 && value.length - 1 in value);
   }
@@ -2838,7 +3291,7 @@ var near = (() => {
   var VALID_OBJECT_KEYS = ["option", "enum", "array", "set", "map", "struct"];
   var ErrorSchema = (
     /** @class */
-    function(_super) {
+    (function(_super) {
       __extends(ErrorSchema2, _super);
       function ErrorSchema2(schema, expected) {
         var message = "Invalid schema: ".concat(JSON.stringify(schema), " expected ").concat(expected);
@@ -2846,7 +3299,7 @@ var near = (() => {
       }
       __name(ErrorSchema2, "ErrorSchema");
       return ErrorSchema2;
-    }(Error)
+    })(Error)
   );
   function validate_schema(schema) {
     if (typeof schema === "string" && VALID_STRING_TYPES.includes(schema)) {
@@ -2920,7 +3373,7 @@ var near = (() => {
   // ../../node_modules/borsh/lib/esm/serialize.js
   var BorshSerializer = (
     /** @class */
-    function() {
+    (function() {
       function BorshSerializer2(checkTypes) {
         this.encoded = new EncodeBuffer();
         this.fieldPath = ["value"];
@@ -3075,13 +3528,13 @@ var near = (() => {
         }
       };
       return BorshSerializer2;
-    }()
+    })()
   );
 
   // ../../node_modules/borsh/lib/esm/deserialize.js
   var BorshDeserializer = (
     /** @class */
-    function() {
+    (function() {
       function BorshDeserializer2(bufferArray) {
         this.buffer = new DecodeBuffer(bufferArray);
       }
@@ -3211,7 +3664,7 @@ var near = (() => {
         return result;
       };
       return BorshDeserializer2;
-    }()
+    })()
   );
 
   // ../../node_modules/borsh/lib/esm/index.js
@@ -3930,38 +4383,49 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
     static {
       __name(this, "WalletAdapter");
     }
-    #walletUrl;
+    #iframeOriginUrl;
     #logoutBridgeService;
     #onStateUpdate;
     constructor({
-      walletUrl = DEFAULT_WALLET_DOMAIN,
+      walletUrl: iframeOriginUrl = DEFAULT_WALLET_DOMAIN,
       targetOrigin,
       onStateUpdate,
       lastState,
       callbackUrl,
       logoutBridgeService = DEFAULT_LOGOUT_BRIDGE_SERVICE
     }) {
-      this.#walletUrl = walletUrl;
+      this.#iframeOriginUrl = iframeOriginUrl;
       this.#logoutBridgeService = logoutBridgeService;
       this.#onStateUpdate = onStateUpdate;
-      console.debug("Intear Popup WalletAdapter initialized. URL:", this.#walletUrl);
+      console.debug("Intear Popup WalletAdapter initialized. URL:", this.#iframeOriginUrl);
       if (typeof window !== "undefined") {
         this.initializeSession().catch((err) => {
           console.error("Error during initial session initialization:", err);
         });
       }
     }
-    async signIn({ contractId, methodNames, networkId }) {
+    async signIn({
+      contractId,
+      methodNames,
+      networkId,
+      callbacks
+    }) {
       console.debug("WalletAdapter: signIn", { contractId, methodNames, networkId });
+      const { onPending, onError, timeout = 6e4 } = callbacks || {};
       const privateKey = privateKeyFromRandom();
       return new Promise((resolve, reject) => {
-        const popup = window.open(`${this.#walletUrl}/connect`, "_blank", POPUP_FEATURES);
-        if (!popup) {
-          return reject(new IntearAdapterError("Popup was blocked"));
-        }
-        let done = false;
+        onPending?.({ step: "popup_opening", networkId, contractId });
+        const iframe = document.createElement("iframe");
+        iframe.src = `${this.#iframeOriginUrl}/wallet-connector-iframe.html`;
+        iframe.style.position = "fixed";
+        iframe.style.inset = "0";
+        iframe.style.width = "100vw";
+        iframe.style.height = "100vh";
+        iframe.style.border = "none";
+        iframe.style.zIndex = "100000";
+        document.body.appendChild(iframe);
         const listener = /* @__PURE__ */ __name(async (event2) => {
-          if (event2.origin !== new URL(this.#walletUrl).origin) {
+          if (event2.origin !== new URL(this.#iframeOriginUrl).origin) {
             return;
           }
           if (!event2.data || !event2.data.type) {
@@ -3975,7 +4439,7 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
               const nonce = Date.now();
               const signatureString = await generateAuthSignature(privateKey, message, nonce);
               const publicKey2 = publicKeyFromPrivate(privateKey);
-              popup.postMessage(
+              iframe.contentWindow?.postMessage(
                 {
                   type: "signIn",
                   data: {
@@ -3985,32 +4449,48 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
                     networkId,
                     nonce,
                     message,
-                    signature: signatureString
+                    signature: signatureString,
+                    version: "V2"
                   }
                 },
-                this.#walletUrl
+                this.#iframeOriginUrl
               );
               break;
             }
             case "connected": {
-              done = true;
-              popup.close();
-              window.removeEventListener("message", listener);
+              onPending?.({ step: "processing_result", networkId, contractId });
               const accounts = event2.data.accounts;
               if (!accounts || accounts.length === 0) {
+                const error = {
+                  type: "wallet_error",
+                  message: "No accounts returned from wallet",
+                  retryable: true,
+                  suggestedAction: "retry",
+                  timestamp: Date.now()
+                };
+                onError?.(error);
                 return reject(new IntearAdapterError("No accounts returned from wallet"));
               }
               const functionCallKeyAdded = event2.data.functionCallKeyAdded;
               const logoutKey = event2.data.logoutKey;
+              const useBridge = event2.data.useBridge;
               const dataToSave = {
                 accounts,
                 key: privateKey,
                 contractId: functionCallKeyAdded && contractId ? contractId : "",
                 methodNames: functionCallKeyAdded ? methodNames ?? [] : [],
                 logoutKey,
-                networkId
+                networkId,
+                walletUrl: event2.origin,
+                useBridge
               };
               window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+              iframe.contentWindow?.postMessage(
+                {
+                  type: "close"
+                },
+                this.#iframeOriginUrl
+              );
               const newState = {
                 accountId: accounts[0].accountId,
                 networkId,
@@ -4038,24 +4518,38 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
               break;
             }
             case "error": {
-              done = true;
-              popup.close();
-              window.removeEventListener("message", listener);
-              reject(new IntearAdapterError(event2.data.message || "Unknown error from wallet popup"));
+              console.error("Error from connect popup", event2.data.message);
+              iframe.contentWindow?.postMessage(
+                {
+                  type: "close",
+                  message: event2.data.message
+                },
+                this.#iframeOriginUrl
+              );
               break;
+            }
+            case "close": {
+              window.removeEventListener("message", listener);
+              iframe.remove();
+              if (event2.data.message) {
+                const errorMessage = event2.data.message || "Unknown error from wallet popup";
+                const error = {
+                  type: "wallet_error",
+                  message: errorMessage,
+                  retryable: true,
+                  suggestedAction: "contact_support",
+                  originalError: event2.data,
+                  timestamp: Date.now()
+                };
+                onError?.(error);
+                reject(new IntearAdapterError(errorMessage));
+                break;
+              }
             }
           }
         }, "listener");
         window.addEventListener("message", listener);
-        const checkPopupClosed = setInterval(() => {
-          if (popup.closed) {
-            window.removeEventListener("message", listener);
-            clearInterval(checkPopupClosed);
-            if (!done) {
-              reject(new IntearAdapterError("Sign-in canceled - popup closed by user"));
-            }
-          }
-        }, 100);
+        onPending?.({ step: "waiting_for_user", networkId, contractId });
       });
     }
     async signOut() {
@@ -4162,14 +4656,93 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
       const savedData = assertLoggedIn();
       const privateKey = savedData.key;
       const accountId2 = savedData.accounts[0].accountId;
+      if (savedData.useBridge) {
+        return new Promise((resolve, reject) => {
+          const iframe = document.createElement("iframe");
+          const wsUrl = this.#logoutBridgeService.replace("https://", "wss://").replace("http://", "ws://");
+          const ws = new WebSocket(`${wsUrl}/api/session/create`);
+          ws.onopen = async () => {
+            console.debug("WebSocket connected for transactions");
+            const transactionsString = JSON.stringify(transactions);
+            const authNonce = Date.now();
+            const signatureString = await generateAuthSignature(
+              savedData.key,
+              transactionsString,
+              authNonce
+            );
+            ws.send(
+              JSON.stringify({
+                type: "signAndSendTransactions",
+                data: {
+                  transactions: transactionsString,
+                  accountId: savedData.accounts[0].accountId,
+                  publicKey: publicKeyFromPrivate(savedData.key),
+                  nonce: authNonce,
+                  signature: signatureString
+                }
+              })
+            );
+          };
+          let currentSessionId = null;
+          ws.onmessage = (event2) => {
+            try {
+              const data = JSON.parse(event2.data);
+              if (data.session_id) {
+                currentSessionId = data.session_id;
+                console.debug(
+                  "Received session ID for send-transactions:",
+                  currentSessionId
+                );
+              } else {
+                console.debug("Received send-transactions response:", data);
+                ws.close();
+                if (data.type === "error") {
+                  const errorMessage = data.message || "Unknown error from wallet popup";
+                  reject(new IntearAdapterError(errorMessage));
+                } else {
+                  resolve({ outcomes: data.outcomes });
+                }
+                iframe.remove();
+              }
+            } catch (e) {
+              console.error("Error parsing WebSocket message:", e);
+              reject(new IntearAdapterError("Error parsing WebSocket message", e));
+              iframe.remove();
+            }
+          };
+          ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            reject(new IntearAdapterError("WebSocket error", error));
+            iframe.remove();
+          };
+          ws.onclose = () => {
+            console.debug("WebSocket closed for send-transactions");
+            iframe.remove();
+          };
+          (async () => {
+            const sessionId = await new Promise((resolveSessionId) => {
+              setInterval(() => {
+                if (currentSessionId) {
+                  resolveSessionId(currentSessionId);
+                }
+              }, 100);
+            });
+            const walletAppUrl = `intear://send-transactions?session_id=${sessionId}`;
+            console.debug("Opening wallet with URL:", walletAppUrl);
+            iframe.style.display = "none";
+            iframe.src = walletAppUrl;
+            document.body.appendChild(iframe);
+          })();
+        });
+      }
       return new Promise(async (resolve, reject) => {
-        const popup = window.open(`${this.#walletUrl}/send-transactions`, "_blank", POPUP_FEATURES);
+        const popup = window.open(`${savedData.walletUrl ?? this.#iframeOriginUrl}/send-transactions`, "_blank", POPUP_FEATURES);
         if (!popup) {
           return reject(new IntearAdapterError("Popup was blocked"));
         }
         let done = false;
         const listener = /* @__PURE__ */ __name(async (event2) => {
-          if (event2.origin !== new URL(this.#walletUrl).origin) return;
+          if (event2.origin !== new URL(savedData.walletUrl ?? this.#iframeOriginUrl).origin) return;
           if (!event2.data || !event2.data.type) return;
           console.debug("Message from send-transactions popup", event2.data);
           switch (event2.data.type) {
@@ -4189,7 +4762,7 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
                     signature: signatureString
                   }
                 },
-                this.#walletUrl
+                savedData.walletUrl ?? this.#iframeOriginUrl
               );
               break;
             }
@@ -4226,14 +4799,107 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
       const savedData = assertLoggedIn();
       const privateKey = savedData.key;
       const accountId2 = savedData.accounts[0].accountId;
+      if (savedData.useBridge) {
+        return new Promise((resolve, reject) => {
+          const iframe = document.createElement("iframe");
+          const wsUrl = this.#logoutBridgeService.replace("https://", "wss://").replace("http://", "ws://");
+          const ws = new WebSocket(`${wsUrl}/api/session/create`);
+          ws.onopen = async () => {
+            console.debug("WebSocket connected for sign-message");
+            const signMessageString = JSON.stringify({
+              message,
+              recipient,
+              nonce: Array.from(nonce),
+              callbackUrl,
+              state: state2
+            });
+            const authNonce = Date.now();
+            const signatureString = await generateAuthSignature(
+              privateKey,
+              signMessageString,
+              authNonce
+            );
+            ws.send(
+              JSON.stringify({
+                type: "signMessage",
+                data: {
+                  message: signMessageString,
+                  accountId: savedData.accounts[0].accountId,
+                  publicKey: publicKeyFromPrivate(privateKey),
+                  nonce: authNonce,
+                  signature: signatureString
+                }
+              })
+            );
+          };
+          let currentSessionId = null;
+          ws.onmessage = (event2) => {
+            try {
+              const data = JSON.parse(event2.data);
+              if (data.session_id) {
+                currentSessionId = data.session_id;
+                console.debug(
+                  "Received session ID for sign-message:",
+                  currentSessionId
+                );
+              } else {
+                console.debug("Received sign-message response:", data);
+                ws.close();
+                if (data.type === "error") {
+                  reject(new Error(data.message));
+                } else {
+                  const signatureData = event2.data.signature;
+                  try {
+                    resolve({
+                      accountId: signatureData.accountId,
+                      publicKey: signatureData.publicKey,
+                      signature: signatureData.signature
+                    });
+                  } catch (e) {
+                    reject(new IntearAdapterError("Failed to process signature from wallet", e));
+                  }
+                }
+                iframe.remove();
+              }
+            } catch (e) {
+              console.error("Error parsing WebSocket message:", e);
+              reject(new IntearAdapterError("Error parsing WebSocket message", e));
+              iframe.remove();
+            }
+          };
+          ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            reject(new IntearAdapterError("WebSocket error", error));
+            iframe.remove();
+          };
+          ws.onclose = () => {
+            console.debug("WebSocket closed for sign-message");
+            iframe.remove();
+          };
+          (async () => {
+            const sessionId = await new Promise((resolveSessionId) => {
+              setInterval(() => {
+                if (currentSessionId) {
+                  resolveSessionId(currentSessionId);
+                }
+              }, 100);
+            });
+            const walletAppUrl = `intear://sign-message?session_id=${sessionId}`;
+            console.debug("Opening wallet with URL:", walletAppUrl);
+            iframe.style.display = "none";
+            iframe.src = walletAppUrl;
+            document.body.appendChild(iframe);
+          })();
+        });
+      }
       return new Promise(async (resolve, reject) => {
-        const popup = window.open(`${this.#walletUrl}/sign-message`, "_blank", POPUP_FEATURES);
+        const popup = window.open(`${savedData.walletUrl ?? this.#iframeOriginUrl}/sign-message`, "_blank", POPUP_FEATURES);
         if (!popup) {
           return reject(new IntearAdapterError("Popup was blocked"));
         }
         let done = false;
         const listener = /* @__PURE__ */ __name(async (event2) => {
-          if (event2.origin !== new URL(this.#walletUrl).origin) return;
+          if (event2.origin !== new URL(savedData.walletUrl ?? this.#iframeOriginUrl).origin) return;
           if (!event2.data || !event2.data.type) return;
           console.debug("Message from sign-message popup", event2.data);
           switch (event2.data.type) {
@@ -4259,7 +4925,7 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
                     signature: signatureString
                   }
                 },
-                this.#walletUrl
+                savedData.walletUrl ?? this.#iframeOriginUrl
               );
               break;
             }
@@ -4563,7 +5229,7 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
     const current = getConfig();
     if (newConfig) {
       if (newConfig.networkId && current.networkId !== newConfig.networkId) {
-        setConfig(newConfig.networkId);
+        setConfig({ ...NETWORKS[newConfig.networkId], networkId: newConfig.networkId });
         update({ accountId: null, privateKey: null, lastWalletId: null });
         lsSet("block", null);
         resetTxHistory();
@@ -4582,11 +5248,12 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
     return publicKey();
   }, "getPublicKeyForContract");
   var selected = /* @__PURE__ */ __name(() => {
-    const network = getConfig().networkId;
-    const nodeUrl = getConfig().nodeUrl;
-    const walletUrl = getConfig().walletUrl;
-    const helperUrl = getConfig().helperUrl;
-    const explorerUrl = getConfig().explorerUrl;
+    const config2 = getConfig();
+    const network = config2.networkId;
+    const nodeUrl = config2.nodeUrl;
+    const walletUrl = config2.walletUrl;
+    const helperUrl = config2.helperUrl;
+    const explorerUrl = config2.explorerUrl;
     const account = accountId();
     const contract = _state.accessKeyContractId;
     const publicKey2 = getPublicKeyForContract();
@@ -4601,28 +5268,82 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
       publicKey: publicKey2
     };
   }, "selected");
-  var requestSignIn = /* @__PURE__ */ __name(async (args) => {
-    const contractId = args?.contractId;
+  var requestSignIn = /* @__PURE__ */ __name(async (params = {}, callbacks = {}) => {
+    const { contractId, methodNames } = params;
+    const { onSuccess, onError, timeout = 6e4 } = callbacks;
+    const networkId = getConfig().networkId;
+    const previousAccountId = lsGet("lastSignedInAccount");
+    const isReconnection = !!previousAccountId && previousAccountId !== _state.accountId;
     const privateKey = privateKeyFromRandom();
     update({ accessKeyContractId: contractId, privateKey });
-    const result = await _adapter.signIn({
-      networkId: getConfig().networkId,
-      contractId
-    });
-    if (result.error) {
-      throw new Error(`Wallet error: ${result.error}`);
-    }
-    if (result.accountId) {
-      update({
-        accountId: result.accountId,
-        privateKey: result.privateKey,
-        // Return the publicKey and privateKey from intear adapter
-        publicKey: result.publicKey,
-        accessKeyContractId: contractId
+    try {
+      const result = await _adapter.signIn({
+        networkId,
+        contractId,
+        methodNames,
+        callbacks: {
+          onError: onError ? (error) => {
+            onError(error);
+          } : void 0,
+          timeout
+        }
       });
-    } else {
-      console.warn("@fastnear: signIn resolved without accountId or error.");
-      update({ accountId: null, privateKey: null, publicKey: null, accessKeyContractId: null });
+      if (result.error) {
+        const error = {
+          type: "wallet_error",
+          message: result.error,
+          retryable: true,
+          suggestedAction: "contact_support",
+          originalError: result.error,
+          timestamp: Date.now()
+        };
+        onError?.(error);
+        throw new Error(`Wallet error: ${result.error}`);
+      }
+      if (result.accountId) {
+        lsSet("lastSignedInAccount", result.accountId);
+        update({
+          accountId: result.accountId,
+          privateKey: result.privateKey,
+          publicKey: result.publicKey,
+          accessKeyContractId: contractId
+        });
+        const successResult = {
+          accountId: result.accountId,
+          publicKey: result.publicKey,
+          networkId,
+          contractId,
+          methodNames,
+          accounts: result.accounts || [{ accountId: result.accountId, publicKey: result.publicKey }],
+          isReconnection
+        };
+        onSuccess?.(successResult);
+        return successResult;
+      } else {
+        console.warn("@fastnear: signIn resolved without accountId or error.");
+        update({ accountId: null, privateKey: null, publicKey: null, accessKeyContractId: null });
+        const error = {
+          type: "unknown",
+          message: "Sign-in completed but no account information was returned",
+          retryable: true,
+          suggestedAction: "retry",
+          originalError: null,
+          timestamp: Date.now()
+        };
+        onError?.(error);
+        throw new Error("Sign-in completed but no account information was returned");
+      }
+    } catch (err) {
+      const error = {
+        type: "unknown",
+        message: err instanceof Error ? err.message : "Unknown error occurred",
+        retryable: true,
+        suggestedAction: "contact_support",
+        originalError: err,
+        timestamp: Date.now()
+      };
+      onError?.(error);
+      throw err;
     }
   }, "requestSignIn");
   var view = /* @__PURE__ */ __name(async ({
@@ -4680,7 +5401,7 @@ Caused by: ${cause instanceof Error ? cause.stack : String(cause)}`;
   }, "localTxHistory");
   var signOut = /* @__PURE__ */ __name(async () => {
     await _adapter.signOut();
-    update({ accountId: null, privateKey: null, contractId: null, lastWalletId: null });
+    update({ accountId: null, privateKey: null, accessKeyContractId: null, lastWalletId: null });
   }, "signOut");
   var signMessage = /* @__PURE__ */ __name(async ({
     message,
@@ -5008,6 +5729,271 @@ message: ${decodedErrMsg}`));
       };
     }, "deployContract")
   };
+
+  // src/client.ts
+  function createNearClient(initialConfig) {
+    const clientState = {
+      accountId: null,
+      privateKey: null,
+      lastWalletId: null,
+      publicKey: null,
+      accessKeyContractId: null
+    };
+    let clientConfig = {
+      ...NETWORKS[initialConfig?.networkId || DEFAULT_NETWORK_ID],
+      ...initialConfig
+    };
+    let clientTxHistory = {};
+    const clientAdapter = new WalletAdapter({
+      onStateUpdate: /* @__PURE__ */ __name((state2) => {
+        const { accountId: accountId2, lastWalletId, privateKey } = state2;
+        const newAccountId = accountId2 || null;
+        if (newAccountId !== clientState.accountId) {
+          clientUpdate({
+            accountId: newAccountId,
+            lastWalletId: lastWalletId || void 0,
+            ...privateKey ? { privateKey } : {}
+          });
+        }
+      }, "onStateUpdate"),
+      walletUrl: WIDGET_URL
+    });
+    const clientEvents = {
+      _eventListeners: {
+        account: /* @__PURE__ */ new Set(),
+        tx: /* @__PURE__ */ new Set()
+      },
+      notifyAccountListeners: /* @__PURE__ */ __name((accountId2) => {
+        clientEvents._eventListeners.account.forEach((callback) => {
+          try {
+            callback(accountId2);
+          } catch (e) {
+            console.error(e);
+          }
+        });
+      }, "notifyAccountListeners"),
+      notifyTxListeners: /* @__PURE__ */ __name((tx) => {
+        clientEvents._eventListeners.tx.forEach((callback) => {
+          try {
+            callback(tx);
+          } catch (e) {
+            console.error(e);
+          }
+        });
+      }, "notifyTxListeners"),
+      onAccount: /* @__PURE__ */ __name((callback) => {
+        clientEvents._eventListeners.account.add(callback);
+        return callback;
+      }, "onAccount"),
+      onTx: /* @__PURE__ */ __name((callback) => {
+        clientEvents._eventListeners.tx.add(callback);
+        return callback;
+      }, "onTx"),
+      offAccount: /* @__PURE__ */ __name((callback) => {
+        clientEvents._eventListeners.account.delete(callback);
+      }, "offAccount"),
+      offTx: /* @__PURE__ */ __name((callback) => {
+        clientEvents._eventListeners.tx.delete(callback);
+      }, "offTx")
+    };
+    const clientUpdate = /* @__PURE__ */ __name((newState) => {
+      const oldState = { ...clientState };
+      Object.assign(clientState, newState);
+      if (newState.hasOwnProperty("privateKey") && newState.privateKey !== oldState.privateKey) {
+        clientState.publicKey = newState.privateKey ? publicKeyFromPrivate(newState.privateKey) : null;
+      }
+      if (newState.hasOwnProperty("accountId") && newState.accountId !== oldState.accountId) {
+        clientEvents.notifyAccountListeners(newState.accountId);
+      }
+      if (newState.hasOwnProperty("lastWalletId") && newState.lastWalletId !== oldState.lastWalletId || newState.hasOwnProperty("accountId") && newState.accountId !== oldState.accountId || newState.hasOwnProperty("privateKey") && newState.privateKey !== oldState.privateKey) {
+        clientAdapter.setState({
+          publicKey: clientState.publicKey,
+          accountId: clientState.accountId,
+          lastWalletId: clientState.lastWalletId,
+          networkId: clientConfig.networkId
+        });
+      }
+    }, "clientUpdate");
+    const clientUpdateTxHistory = /* @__PURE__ */ __name((txStatus) => {
+      const txId = txStatus.txId;
+      clientTxHistory[txId] = {
+        ...clientTxHistory[txId] || {},
+        ...txStatus,
+        updateTimestamp: Date.now()
+      };
+      clientEvents.notifyTxListeners(clientTxHistory[txId]);
+    }, "clientUpdateTxHistory");
+    const clientSendRpc = /* @__PURE__ */ __name(async (method, params) => {
+      if (!clientConfig?.nodeUrl) {
+        throw new Error("fastnear: client config missing nodeUrl.");
+      }
+      const response = await fetch(clientConfig.nodeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: `fastnear-${Date.now()}`,
+          method,
+          params
+        })
+      });
+      const result = await response.json();
+      if (result.error) {
+        throw new Error(JSON.stringify(result.error));
+      }
+      return result;
+    }, "clientSendRpc");
+    return {
+      // State accessors
+      accountId: /* @__PURE__ */ __name(() => clientState.accountId, "accountId"),
+      publicKey: /* @__PURE__ */ __name(() => clientState.publicKey, "publicKey"),
+      authStatus: /* @__PURE__ */ __name(() => clientState.accountId ? "SignedIn" : "SignedOut", "authStatus"),
+      // Config management
+      config: /* @__PURE__ */ __name((newConfig) => {
+        if (newConfig) {
+          if (newConfig.networkId && clientConfig.networkId !== newConfig.networkId) {
+            clientConfig = { ...NETWORKS[newConfig.networkId], networkId: newConfig.networkId };
+            clientUpdate({ accountId: null, privateKey: null, lastWalletId: null });
+            clientTxHistory = {};
+          }
+          clientConfig = { ...clientConfig, ...newConfig };
+        }
+        return clientConfig;
+      }, "config"),
+      // Selection info
+      selected: /* @__PURE__ */ __name(() => {
+        const network = clientConfig.networkId;
+        const nodeUrl = clientConfig.nodeUrl;
+        const walletUrl = clientConfig.walletUrl;
+        const helperUrl = clientConfig.helperUrl;
+        const explorerUrl = clientConfig.explorerUrl;
+        const account = clientState.accountId;
+        const contract = clientState.accessKeyContractId;
+        const publicKey2 = clientState.publicKey;
+        return {
+          network,
+          nodeUrl,
+          walletUrl,
+          helperUrl,
+          explorerUrl,
+          account,
+          contract,
+          publicKey: publicKey2
+        };
+      }, "selected"),
+      // Authentication - using the existing function but with client state
+      requestSignIn: /* @__PURE__ */ __name(async (params = {}, callbacks = {}) => {
+        const originalState = { ..._state };
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_state, clientState);
+          Object.assign(_config, clientConfig);
+          const result = await requestSignIn(params, callbacks);
+          clientUpdate({
+            accountId: _state.accountId,
+            privateKey: _state.privateKey,
+            publicKey: _state.publicKey,
+            accessKeyContractId: _state.accessKeyContractId
+          });
+          return result;
+        } finally {
+          Object.assign(_state, originalState);
+          Object.assign(_config, originalConfig);
+        }
+      }, "requestSignIn"),
+      signOut: /* @__PURE__ */ __name(async () => {
+        await clientAdapter.signOut();
+        clientUpdate({ accountId: null, privateKey: null, accessKeyContractId: null, lastWalletId: null });
+      }, "signOut"),
+      // RPC methods - using client config
+      sendRpc: clientSendRpc,
+      // Wrap other functions to use client state/config
+      view: /* @__PURE__ */ __name((params) => {
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_config, clientConfig);
+          return view(params);
+        } finally {
+          Object.assign(_config, originalConfig);
+        }
+      }, "view"),
+      queryAccount: /* @__PURE__ */ __name((params) => {
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_config, clientConfig);
+          return queryAccount(params);
+        } finally {
+          Object.assign(_config, originalConfig);
+        }
+      }, "queryAccount"),
+      queryBlock: /* @__PURE__ */ __name((params) => {
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_config, clientConfig);
+          return queryBlock(params);
+        } finally {
+          Object.assign(_config, originalConfig);
+        }
+      }, "queryBlock"),
+      queryAccessKey: /* @__PURE__ */ __name((params) => {
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_config, clientConfig);
+          return queryAccessKey(params);
+        } finally {
+          Object.assign(_config, originalConfig);
+        }
+      }, "queryAccessKey"),
+      queryTx: /* @__PURE__ */ __name((params) => {
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_config, clientConfig);
+          return queryTx(params);
+        } finally {
+          Object.assign(_config, originalConfig);
+        }
+      }, "queryTx"),
+      // Transaction methods
+      sendTx: /* @__PURE__ */ __name(async (params) => {
+        const originalState = { ..._state };
+        const originalConfig = { ..._config };
+        try {
+          Object.assign(_state, clientState);
+          Object.assign(_config, clientConfig);
+          const result = await sendTx(params);
+          clientUpdate({
+            accountId: _state.accountId,
+            privateKey: _state.privateKey,
+            publicKey: _state.publicKey,
+            accessKeyContractId: _state.accessKeyContractId
+          });
+          return result;
+        } finally {
+          Object.assign(_state, originalState);
+          Object.assign(_config, originalConfig);
+        }
+      }, "sendTx"),
+      signMessage: /* @__PURE__ */ __name(async (params) => {
+        const originalState = { ..._state };
+        try {
+          Object.assign(_state, clientState);
+          return await signMessage(params);
+        } finally {
+          Object.assign(_state, originalState);
+        }
+      }, "signMessage"),
+      // Transaction history
+      localTxHistory: /* @__PURE__ */ __name(() => clientTxHistory, "localTxHistory"),
+      // Events
+      event: clientEvents,
+      // Action helpers (these are pure functions, no state needed)
+      actions,
+      // Utils and exports (these are pure, no state needed)
+      utils,
+      exp: exp2
+    };
+  }
+  __name(createNearClient, "createNearClient");
   return __toCommonJS(src_exports3);
 })();
 /*! Bundled license information:
@@ -5015,7 +6001,7 @@ message: ${decodedErrMsg}`));
 @noble/hashes/esm/utils.js:
   (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 
-@noble/curves/esm/abstract/utils.js:
+@noble/curves/esm/utils.js:
 @noble/curves/esm/abstract/modular.js:
 @noble/curves/esm/abstract/curve.js:
 @noble/curves/esm/abstract/edwards.js:
