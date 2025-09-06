@@ -145,3 +145,9 @@ You can use any action type in each transaction:
 - `deployContract`: Deploy a smart contract
 
 This approach allows you to efficiently execute multiple operations on different contracts or accounts in a single wallet interaction.
+
+
+---
+
+
+copyright: 2025 by sleet.near

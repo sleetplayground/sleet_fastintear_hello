@@ -161,3 +161,9 @@ After successful login, you might see entries like:
   "nodeUrl": "https://rpc.testnet.fastnear.com/"
 }
 ```
+
+
+---
+
+
+copyright: 2025 by sleet.near
